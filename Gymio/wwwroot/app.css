@@ -1,5 +1,9 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+   
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    background-attachment: fixed; 
+    color: #e2e8f0; 
 }
 
 a, .btn-link {
@@ -13,7 +17,7 @@ a, .btn-link {
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
 .content {
@@ -58,3 +62,58 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+
+
+.page {
+    background-color: transparent !important;
+}
+
+main.layout-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: transparent;
+    min-height: 100vh;
+}
+
+
+.top-row {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* ==========================================================================
+  estilos para la targeta
+   ========================================================================== */
+.gym-member-card {
+    /* Degradado azul moderno, inspirado en tarjetas premium */
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    min-height: 450px;
+    position: relative;
+}
+
+
+    .gym-member-card::before,
+    .gym-member-card::after {
+        content: '';
+        position: absolute;
+        border-radius: 50%;
+        background: linear-gradient(to right, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+        z-index: 0;
+    }
+
+    .gym-member-card::before {
+        width: 300px;
+        height: 300px;
+        top: -100px;
+        right: -100px;
+    }
+
+    .gym-member-card::after {
+        width: 200px;
+        height: 200px;
+        bottom: -50px;
+        left: -50px;
+    }

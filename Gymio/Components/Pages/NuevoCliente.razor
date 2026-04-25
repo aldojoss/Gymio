@@ -1,83 +1,148 @@
 ﻿@page "/nuevo-cliente"
 @using Gymio.Models
-@using Gymio.Data
-@inject GymioDbContext DbContext 
-@using Gymio.Services;
+@using Gymio.Services
 @inject ClienteService ClienteService
 
-<div class="container mt-5">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="text-dark fw-bold">Registro de Nuevo Cliente</h2>
-            <p class="text-muted">Añade un nuevo miembro al gimnasio y genera su acceso.</p>
-        </div>
-    </div>
+<style>
+    
+    .title-contrast-fix {
+        color: #212529 !important; 
+    }
+    
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="fw-bold text-primary">Información Personal</h5>
-                </div>
-                <div class="card-body p-4">
-                    
-                    @if (registroExitoso)
-                    {
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <strong>¡Éxito!</strong> El cliente @clienteNuevo.Nombre ha sido guardado correctamente en la base de datos.
-                            <button type="button" class="btn-close" @onclick="() => registroExitoso = false"></button>
-                        </div>
-                    }
+    .input-contrast-fix {
+        color: #212529 !important; 
+    }
 
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-lg bg-light" placeholder="Ej. Juan" @bind="clienteNuevo.Nombre" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Apellido <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-lg bg-light" placeholder="Ej. Pérez" @bind="clienteNuevo.Apellido" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Correo Electrónico</label>
-                            <input type="email" class="form-control form-control-lg bg-light" placeholder="juan@email.com" @bind="clienteNuevo.Email" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Teléfono</label>
-                            <input type="tel" class="form-control form-control-lg bg-light" placeholder="+505 0000-0000" @bind="clienteNuevo.Telefono" />
-                        </div>
-                    </div>
+        .input-contrast-fix::placeholder {
+            color: #6c757d !important; 
+            opacity: 1 !important; 
+        }
 
-                    <div class="mt-5 d-flex justify-content-end border-top pt-4">
-                        <button class="btn btn-primary btn-lg px-5 fw-bold" @onclick="GuardarEnBaseDeDatos">
-                            Registrar Cliente
-                        </button>
-                    </div>
-                </div>
+
+    .card-dark-theme {
+        background-color: #282c34 !important; 
+        color: #ffffff;
+    }
+</style>
+
+<div class="container-fluid py-2">
+    <div class="container">
+        <div class="row mb-4 align-items-end">
+            <div class="col">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1">
+                        <li class="breadcrumb-item text-primary">Administración</li>
+                        <li class="breadcrumb-item active">Clientes</li>
+                    </ol>
+                </nav>
+                <h2 class="fw-bold m-0 text-white">Registro de Membresía</h2>
+            </div>
+            <div class="col-auto">
+
+                <a href="/clientes" class="btn btn-outline-secondary border-0">
+                    <span class="fs-5">📋</span> Ver Lista
+                </a>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 text-center h-100">
-                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
-                    
-                    <div class="rounded-circle bg-primary bg-opacity-10 p-3 mb-3">
-                        <span class="fs-1 text-primary">📱</span>
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 card-dark-theme">
+                    <div class="card-body p-4 p-md-5">
+                        
+                        @if (registroExitoso)
+                        {
+                            <div class="alert alert-success border-0 shadow-sm d-flex align-items-center mb-4" role="alert">
+                                <span class="fs-4 me-3">✅</span>
+                                <div>
+                                    <h6 class="alert-heading fw-bold mb-0 text-dark">¡Cliente registrado!</h6>
+                                    <small class="text-dark">Los datos se han sincronizado con SQL Server correctamente.</small>
+                                </div>
+                            </div>
+                        }
+
+                        <h5 class="fw-bold text-white mb-4">Información del Socio</h5>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-uppercase text-light">Nombre(s)</label>
+                                <input type="text" class="form-control form-control-lg bg-white border-0 input-contrast-fix"
+                                       placeholder="Nombre completo" @bind="clienteNuevo.Nombre" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-uppercase text-light">Apellidos</label>
+                                <input type="text" class="form-control form-control-lg bg-white border-0 input-contrast-fix"
+                                       placeholder="Apellidos" @bind="clienteNuevo.Apellido" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-uppercase text-light">Correo Electrónico</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-0 text-muted">@("@")</span>
+                                    <input type="email" class="form-control form-control-lg bg-white border-0 input-contrast-fix"
+                                           placeholder="nombre@ejemplo.com" @bind="clienteNuevo.Email" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-uppercase text-light">Teléfono de Contacto</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-0 text-muted">📞</span>
+                                    <input type="tel" class="form-control form-control-lg bg-white border-0 input-contrast-fix"
+                                           placeholder="8888-8888" @bind="clienteNuevo.Telefono" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-4 border-top border-secondary d-flex justify-content-between align-items-center">
+                            <p class="text-light small mb-0 opacity-75">* Todos los campos con datos personales son necesarios para el QR.</p>
+                            <button class="btn btn-primary btn-lg px-5 rounded-3 fw-bold shadow" @onclick="ProcesarRegistro">
+                                Finalizar Registro
+                            </button>
+                        </div>
                     </div>
-                    
-                    <h5 class="fw-bold mb-2">Tarjeta de Acceso</h5>
-                    <p class="text-muted small mb-4">El código identificador único se generará automáticamente al registrar al cliente.</p>
-                    
-                    <div class="bg-light w-100 rounded-3 d-flex flex-column justify-content-center align-items-center" style="height: 220px; border: 2px dashed #dee2e6;">
-                        @if (string.IsNullOrEmpty(clienteNuevo.CodigoQR))
-                        {
-                            <span class="text-secondary fw-bold tracking-widest">QR PENDIENTE</span>
-                        }
-                        else
-                        {
-                            <h3 class="text-primary font-monospace fw-bold mb-2">@clienteNuevo.CodigoQR</h3>
-                            <span class="badge bg-success">Listo para escanear</span>
-                        }
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 rounded-4 overflow-hidden gym-member-card h-100">
+                    <div class="card-body p-4 p-md-5 d-flex flex-column justify-content-between position-relative z-1">
+            
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="fw-bold fs-4 text-white" style="letter-spacing: 2px;">GYMIO</div>
+                            <span class="badge bg-white bg-opacity-25 text-white rounded-pill px-3 py-2 border border-white border-opacity-25">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-star-fill me-1 mb-1" viewBox="0 0 16 16">
+                                    <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
+                                </svg>
+                                SOCIO
+                            </span>
+                        </div>
+            
+                        <div class="bg-white rounded-4 p-4 mx-auto mb-5 shadow text-center d-flex flex-column align-items-center justify-content-center" style="width: 220px; height: 220px;">
+                            @if (string.IsNullOrEmpty(clienteNuevo.CodigoQR))
+                            {
+                                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" fill="#cbd5e1" viewBox="0 0 16 16" class="mb-3">
+                                    <path d="M0 .5A.5.5 0 0 1 .5 0h3a.5.5 0 0 1 0 1H1v2.5a.5.5 0 0 1-1 0v-3Zm12 0a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0V1h-2.5a.5.5 0 0 1-.5-.5ZM.5 16a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 1 0V15h2.5a.5.5 0 0 1 0 1h-3Zm12 0a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 1 0v2.5h2.5a.5.5 0 0 1 0 1h-3Z" />
+                                    <path d="M3 4.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5Z" />
+                                </svg>
+                                <p class="mb-0 small fw-bold text-muted" style="letter-spacing: 1px;">SIN DATOS</p>
+                            }
+                            else
+                            {
+                                <div class="text-dark fw-bold mb-2" style="font-family: monospace; font-size: 1.2rem; letter-spacing: 2px;">
+                                    @clienteNuevo.CodigoQR
+                                </div>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">QR VÁLIDO</span>
+                            }
+                        </div>
+            
+                        <div class="mt-auto">
+                            <p class="text-white text-opacity-75 small mb-1 text-uppercase" style="letter-spacing: 1px;">Titular de la cuenta</p>
+                            <h5 class="fw-bold text-white mb-0 text-truncate">
+                                @(string.IsNullOrEmpty(clienteNuevo.Nombre) ? "Esperando nombre..." : clienteNuevo.Nombre + " " + clienteNuevo.Apellido)
+                            </h5>
+                            <p class="text-white text-opacity-50 mt-2 mb-0" style="font-family: monospace;">ID: •••• ••••</p>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -89,22 +154,13 @@
     private Cliente clienteNuevo = new Cliente();
     private bool registroExitoso = false;
 
-    private async Task GuardarEnBaseDeDatos()
+    private async Task ProcesarRegistro()
     {
-        try
+        bool exito = await ClienteService.RegistrarClienteAsync(clienteNuevo);
+        if (exito)
         {
-  
-            bool resultado = await ClienteService.RegistrarClienteAsync(clienteNuevo);
-            
-            if (resultado)
-            {
-                registroExitoso = true;
-            
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Error crítico: " + ex.Message);
+            registroExitoso = true;
+            StateHasChanged();
         }
     }
 }
