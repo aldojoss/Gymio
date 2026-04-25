@@ -19,6 +19,11 @@ builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnection
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
+    .AddHubOptions(options =>
+    {
+        
+        options.MaximumReceiveMessageSize = 10 * 1024 * 1024;
+    })
     .AddInteractiveWebAssemblyComponents();
 
 var app = builder.Build();

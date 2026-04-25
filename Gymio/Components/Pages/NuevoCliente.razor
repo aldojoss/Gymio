@@ -1,28 +1,29 @@
 ﻿@page "/nuevo-cliente"
-@inject IWebHostEnvironment Env
 @using Gymio.Models
 @using Gymio.Services
 @using Gymio.Interfaces
 @inject IClienteService ClienteService
+
+
 <style>
     
     .title-contrast-fix {
-        color: #212529 !important; 
+        color: #212529 !important;
     }
-    
 
+    
     .input-contrast-fix {
-        color: #212529 !important; 
+        color: #212529 !important;
     }
 
         .input-contrast-fix::placeholder {
-            color: #6c757d !important; 
-            opacity: 1 !important; 
+            color: #6c757d !important;
+            opacity: 1 !important;
         }
 
 
     .card-dark-theme {
-        background-color: #282c34 !important; 
+        background-color: #282c34 !important;
         color: #ffffff;
     }
 </style>
@@ -93,12 +94,6 @@
                             </div>
                         </div>
 
-                        <div class="col-12 mt-3">
-                            <label class="form-label text-white">Fotografía del Socio (Opcional)</label>
-                            <InputFile OnChange="CargarFoto" class="form-control form-control-lg border-secondary-subtle" accept="image/*" />
-                            <small class="text-muted">Formatos aceptados: JPG, PNG. Tamaño máximo: 2MB.</small>
-                        </div>
-
                         <div class="mt-5 pt-4 border-top border-secondary d-flex justify-content-between align-items-center">
                             <p class="text-light small mb-0 opacity-75">* Todos los campos con datos personales son necesarios para el QR.</p>
                             <button class="btn btn-primary btn-lg px-5 rounded-3 fw-bold shadow" @onclick="ProcesarRegistro">
@@ -159,63 +154,14 @@
 @code {
     private Cliente clienteNuevo = new Cliente();
     private bool registroExitoso = false;
-    private IBrowserFile? archivoFoto; // Variable temporal para sostener la foto
-
-    // 1. Este método se ejecuta cuando la recepcionista selecciona la foto de su PC
-    private void CargarFoto(InputFileChangeEventArgs e)
-    {
-        archivoFoto = e.File;
-    }
-
-    private string mensajeError = ""; 
 
     private async Task ProcesarRegistro()
     {
-        try
+        bool exito = await ClienteService.RegistrarClienteAsync(clienteNuevo);
+        if (exito)
         {
-            mensajeError = ""; 
-
-            if (archivoFoto != null)
-            {
-                var extension = Path.GetExtension(archivoFoto.Name);
-                var nombreArchivoUnico = Guid.NewGuid().ToString() + extension;
-            
-                
-                var rutaCarpeta = Path.Combine(Env.WebRootPath, "images", "socios");
-                if (!Directory.Exists(rutaCarpeta))
-                {
-                    Directory.CreateDirectory(rutaCarpeta); 
-                }
-
-                var rutaFisica = Path.Combine(rutaCarpeta, nombreArchivoUnico);
-
-                
-                long tamañoMaximo = 1024 * 1024 * 10;
-
-                using (var stream = new FileStream(rutaFisica, FileMode.Create))
-                {
-                    await archivoFoto.OpenReadStream(maxAllowedSize: tamañoMaximo).CopyToAsync(stream);
-                }
-
-                clienteNuevo.FotoUrl = $"/images/socios/{nombreArchivoUnico}";
-            }
-            else
-            {
-                clienteNuevo.FotoUrl = "/images/socios/default-avatar.png";
-            }
-
-            bool exito = await ClienteService.RegistrarClienteAsync(clienteNuevo);
-            if (exito)
-            {
-                registroExitoso = true;
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
-        {
-          
-            mensajeError = $"Error al procesar la imagen: {ex.Message}";
-            Console.WriteLine(mensajeError); 
+            registroExitoso = true;
+            StateHasChanged();
         }
     }
 }
