@@ -1,0 +1,116 @@
+﻿@page "/clientes"
+@using Gymio.Models
+@using Gymio.Services
+@inject ClienteService ClienteService
+
+<div class="container-fluid py-4">
+    <div class="container">
+        <div class="row mb-4 align-items-center g-3">
+            <div class="col-md-4">
+                <h2 class="fw-bold mb-0 text-body">Directorio de Socios</h2>
+            </div>
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-body-tertiary border-secondary-subtle">🔍</span>
+                    <input type="text" class="form-control border-secondary-subtle bg-body"
+                           placeholder="Buscar por nombre o Código QR..."
+                           @bind="terminoBusqueda" @bind:event="oninput" @onkeyup="RealizarBusqueda" />
+                </div>
+            </div>
+            <div class="col-md-3 text-end">
+                <a href="/nuevo-cliente" class="btn btn-primary fw-bold w-100">
+                    + Registrar Socio
+                </a>
+            </div>
+        </div>
+
+        <div class="card border-secondary-subtle shadow-sm bg-body">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-4 py-3">Cliente</th>
+                                <th class="py-3">Contacto</th>
+                                <th class="py-3">Fecha de Ingreso</th>
+                                <th class="py-3">Estado</th>
+                                <th class="text-end pe-4 py-3">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (listaClientes == null)
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                        Cargando datos...
+                                    </td>
+                                </tr>
+                            }
+                            else if (!listaClientes.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted fw-bold">
+                                        No se encontraron clientes con esos datos.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var cliente in listaClientes)
+                                {
+                                    <tr>
+                                        <td class="ps-4 py-3">
+                                            <div class="fw-bold text-body">@cliente.Nombre @cliente.Apellido</div>
+                                            <small class="text-secondary font-monospace">@cliente.CodigoQR</small>
+                                        </td>
+                                        <td>
+                                            <div class="text-body">@(string.IsNullOrEmpty(cliente.Telefono) ? "Sin teléfono" : cliente.Telefono)</div>
+                                            <small class="text-secondary">@cliente.Email</small>
+                                        </td>
+                                        <td class="text-body">@cliente.FechaRegistro.ToString("dd/MMM/yyyy")</td>
+                                        <td>
+                                            @if (cliente.Activo)
+                                            {
+                                                <span class="badge bg-success">Activo</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactivo</span>
+                                            }
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <button class="btn btn-sm btn-outline-secondary fw-bold">Ver Perfil</button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Cliente>? listaClientes;
+    private string terminoBusqueda = "";
+
+  
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarClientes();
+    }
+
+
+    private async Task RealizarBusqueda()
+    {
+        await CargarClientes();
+    }
+
+    private async Task CargarClientes()
+    {
+        listaClientes = await ClienteService.ObtenerClientesAsync(terminoBusqueda);
+    }
+}
