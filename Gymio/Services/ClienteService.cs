@@ -1,10 +1,11 @@
 ﻿using Gymio.Data;
+using Gymio.Interfaces;
 using Gymio.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gymio.Services
 {
-    public class ClienteService
+    public class ClienteService : IClienteService
     {
         private readonly GymioDbContext _context;
 
@@ -53,6 +54,25 @@ namespace Gymio.Services
 
           
             return await consulta.OrderByDescending(c => c.FechaRegistro).ToListAsync();
+        }
+
+        public async Task<Cliente?> ObtenerClientePorQRAsync(string codigoQR)
+        {   
+            return await _context.Clientes.FirstOrDefaultAsync(c => c.CodigoQR == codigoQR);
+        }
+
+        public async Task<bool> RegistrarAsistenciaAsync(int clienteId, bool accesoPermitido)
+        {
+            var asistencia = new Asistencia
+            {
+                ClienteId = clienteId,
+                FechaHoraEntrada = DateTime.Now,
+                AccesoPermitido = accesoPermitido
+            };
+
+            _context.Asistencias.Add(asistencia);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }
