@@ -17,6 +17,8 @@ namespace Gymio.Data
         public DbSet<Producto> Productos { get; set; }
         public DbSet<Venta> Ventas { get; set; }
         public DbSet<VentaDetalle> VentaDetalles { get; set; }
+        public DbSet<Egreso> Egresos { get; set; }
+        public DbSet<AsignacionEntrenador> AsignacionesEntrenadores { get; set; }
 
     }
 }

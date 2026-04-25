@@ -1,6 +1,7 @@
 using Gymio.Client.Pages;
 using Gymio.Components;
 using Gymio.Data;
+using Gymio.Services;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 
@@ -8,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<GymioDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GymioSQLConnection")));
+builder.Services.AddScoped<ClienteService>();
 
 var mongoConnectionString = builder.Configuration.GetConnectionString("GymioMongoConnection");
 builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnectionString));

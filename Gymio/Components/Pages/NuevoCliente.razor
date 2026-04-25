@@ -1,0 +1,110 @@
+﻿@page "/nuevo-cliente"
+@using Gymio.Models
+@using Gymio.Data
+@inject GymioDbContext DbContext 
+@using Gymio.Services;
+@inject ClienteService ClienteService
+
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-dark fw-bold">Registro de Nuevo Cliente</h2>
+            <p class="text-muted">Añade un nuevo miembro al gimnasio y genera su acceso.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="fw-bold text-primary">Información Personal</h5>
+                </div>
+                <div class="card-body p-4">
+                    
+                    @if (registroExitoso)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>¡Éxito!</strong> El cliente @clienteNuevo.Nombre ha sido guardado correctamente en la base de datos.
+                            <button type="button" class="btn-close" @onclick="() => registroExitoso = false"></button>
+                        </div>
+                    }
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg bg-light" placeholder="Ej. Juan" @bind="clienteNuevo.Nombre" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Apellido <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg bg-light" placeholder="Ej. Pérez" @bind="clienteNuevo.Apellido" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Correo Electrónico</label>
+                            <input type="email" class="form-control form-control-lg bg-light" placeholder="juan@email.com" @bind="clienteNuevo.Email" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Teléfono</label>
+                            <input type="tel" class="form-control form-control-lg bg-light" placeholder="+505 0000-0000" @bind="clienteNuevo.Telefono" />
+                        </div>
+                    </div>
+
+                    <div class="mt-5 d-flex justify-content-end border-top pt-4">
+                        <button class="btn btn-primary btn-lg px-5 fw-bold" @onclick="GuardarEnBaseDeDatos">
+                            Registrar Cliente
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 text-center h-100">
+                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+                    
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-3 mb-3">
+                        <span class="fs-1 text-primary">📱</span>
+                    </div>
+                    
+                    <h5 class="fw-bold mb-2">Tarjeta de Acceso</h5>
+                    <p class="text-muted small mb-4">El código identificador único se generará automáticamente al registrar al cliente.</p>
+                    
+                    <div class="bg-light w-100 rounded-3 d-flex flex-column justify-content-center align-items-center" style="height: 220px; border: 2px dashed #dee2e6;">
+                        @if (string.IsNullOrEmpty(clienteNuevo.CodigoQR))
+                        {
+                            <span class="text-secondary fw-bold tracking-widest">QR PENDIENTE</span>
+                        }
+                        else
+                        {
+                            <h3 class="text-primary font-monospace fw-bold mb-2">@clienteNuevo.CodigoQR</h3>
+                            <span class="badge bg-success">Listo para escanear</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Cliente clienteNuevo = new Cliente();
+    private bool registroExitoso = false;
+
+    private async Task GuardarEnBaseDeDatos()
+    {
+        try
+        {
+  
+            bool resultado = await ClienteService.RegistrarClienteAsync(clienteNuevo);
+            
+            if (resultado)
+            {
+                registroExitoso = true;
+            
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error crítico: " + ex.Message);
+        }
+    }
+}
