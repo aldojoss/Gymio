@@ -12,6 +12,7 @@ builder.Services.AddDbContext<GymioDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GymioSQLConnection")));
 builder.Services.AddScoped<IClienteService,ClienteService>();
 
+
 var mongoConnectionString = builder.Configuration.GetConnectionString("GymioMongoConnection");
 builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnectionString));
 

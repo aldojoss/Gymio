@@ -18,22 +18,27 @@ namespace Gymio.Services
 
         public async Task<bool> RegistrarClienteAsync(Cliente nuevoCliente)
         {
-            if (string.IsNullOrWhiteSpace(nuevoCliente.Nombre) || string.IsNullOrWhiteSpace(nuevoCliente.Apellido))
-                return false;
+            // 1el codigo generamos uno unico para evitar errores al 100*100
+            // Formato: GYM-AÑO-MES-DIA-5LetrasAleatorias
+            string fecha = DateTime.Now.ToString("yyyyMMdd");
+            string identificadorUnico = Guid.NewGuid().ToString().Substring(0, 5).ToUpper();
 
+            nuevoCliente.CodigoQR = $"GYM-{fecha}-{identificadorUnico}";
 
-            string iniciales = $"{nuevoCliente.Nombre.Substring(0, 1)}{nuevoCliente.Apellido.Substring(0, 1)}".ToUpper();
-            string timestamp = DateTime.Now.ToString("yyMM");
-            int randomNum = new Random().Next(1000, 9999);
+            // no creqo eu pase
+            bool existe = await _context.Clientes.AnyAsync(c => c.CodigoQR == nuevoCliente.CodigoQR);
+            if (existe)
+            {
+                // Si existe, le agregamos unos milisegundos para desempatar
+                nuevoCliente.CodigoQR += $"-{DateTime.Now.Millisecond}";
+            }
 
-            nuevoCliente.CodigoQR = $"GYM-{iniciales}-{timestamp}-{randomNum}";
-            nuevoCliente.Email ??= "";
-            nuevoCliente.Telefono ??= "";
+            // 3. Guardamos en la base de datos
             nuevoCliente.FechaRegistro = DateTime.Now;
             nuevoCliente.Activo = true;
 
             _context.Clientes.Add(nuevoCliente);
-            await _context.SaveChangesAsync(); // Usamos la versión Async
+            await _context.SaveChangesAsync();
 
             return true;
         }

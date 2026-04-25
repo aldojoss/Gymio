@@ -23,4 +23,8 @@
     <PackageReference Include="MongoDB.Driver" Version="3.8.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\images\socios\" />
+  </ItemGroup>
+
 </Project>
