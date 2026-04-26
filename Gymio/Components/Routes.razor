@@ -1,16 +1,7 @@
 ﻿<CascadingAuthenticationState>
     <Router AppAssembly="typeof(Program).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
-                <NotAuthorized>
-                    <div class="vh-100 bg-dark d-flex flex-column align-items-center justify-content-center text-white">
-                        <h1 class="text-danger fw-black display-1"><i class="bi bi-shield-lock-fill"></i> 401</h1>
-                        <h2 class="fw-bold">ACCESO RESTRINGIDO</h2>
-                        <p class="text-white-50 fs-5">Debes iniciar sesión para acceder a este módulo.</p>
-                        <a href="login" class="btn btn-primary px-5 py-3 mt-4 fw-bold shadow-orange rounded-3">IR AL LOGIN</a>
-                    </div>
-                </NotAuthorized>
-            </AuthorizeRouteView>
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
             <FocusOnNavigate RouteData="routeData" Selector="h1" />
         </Found>
         <NotFound>
@@ -21,8 +12,3 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
-
-<style>
-    .shadow-orange { box-shadow: 0 4px 15px rgba(255, 107, 0, 0.4); }
-    .btn-primary { background-color: #ff6b00; border-color: #ff6b00; color: white; }
-</style>

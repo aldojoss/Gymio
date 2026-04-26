@@ -1,6 +1,4 @@
 ﻿@page "/acceso"
-
-@using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using Gymio.Models
@@ -84,7 +82,7 @@
     .fade-in { animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .pulse-text { animation: blink 1.5s infinite; }
     
-    /* Agregamos doble @@ para que el compilador de Blazor no de error */
+    /* agregamos doble @@ para que el compilador de Blazor no de error */
     @@keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
     @@keyframes blink { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
 </style>

@@ -1,5 +1,5 @@
 using Gymio.Client.Pages;
-using Gymio.Components;
+
 using Gymio.Data;
 using Gymio.Interfaces;
 using Gymio.Services;
@@ -71,7 +71,7 @@ app.MapStaticAssets();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapRazorComponents<App>()
+app.MapRazorComponents<Gymio.Components.App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(Gymio.Client._Imports).Assembly);

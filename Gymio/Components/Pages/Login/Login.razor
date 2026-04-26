@@ -1,17 +1,6 @@
 ﻿@page "/login"
 @layout Gymio.Components.Layout.LoginLayout
 @attribute [AllowAnonymous]
-@rendermode InteractiveServer
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
-@inject AuthenticationStateProvider AuthStateProvider
-
-@using Gymio.Models
-@using Gymio.Interfaces
-@using Microsoft.EntityFrameworkCore
-@inject IAuthService AuthService
-@inject Gymio.Data.GymioDbContext DbContext
-@inject NavigationManager NavigationManager
 
 <div class="card bg-secondary bg-opacity-10 border-0 shadow-lg rounded-4 p-4 p-md-5" style="width: 100%; max-width: 420px; border-top: 5px solid #ff6b00 !important;">
     
@@ -20,48 +9,35 @@
         <p class="text-white-50 fw-bold text-uppercase small" style="letter-spacing: 4px;">Acceso de Personal</p>
     </div>
 
-    @if (!string.IsNullOrEmpty(mensajeError))
+    @if (!string.IsNullOrEmpty(errorMessage))
     {
         <div class="alert alert-danger bg-danger bg-opacity-10 text-danger border-0 fw-bold py-2 mb-4 text-center fade-in">
-            <i class="bi bi-exclamation-octagon-fill me-2"></i> @mensajeError
+            <i class="bi bi-exclamation-octagon-fill me-2"></i> @errorMessage
         </div>
     }
 
-    <div class="mb-4">
-        <label class="form-label text-muted fw-bold small">CORREO ELECTRÓNICO</label>
-        <div class="input-group">
-            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-muted"><i class="bi bi-envelope-at"></i></span>
-            <input type="email" class="form-control form-control-lg bg-dark border-secondary border-opacity-25 text-white shadow-none" 
-                   @bind="email" placeholder="admin@gymio.com" autofocus />
+    <form action="/api/login" method="post">
+        
+        <div class="mb-4">
+            <label class="form-label text-muted fw-bold small">CORREO ELECTRÓNICO</label>
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary border-opacity-25 text-muted"><i class="bi bi-envelope-at"></i></span>
+                <input type="email" name="email" class="form-control form-control-lg bg-dark border-secondary border-opacity-25 text-white shadow-none" placeholder="admin@gymio.com" required autofocus />
+            </div>
         </div>
-    </div>
 
-    <div class="mb-5">
-        <label class="form-label text-muted fw-bold small">CONTRASEÑA</label>
-        <div class="input-group">
-            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-muted"><i class="bi bi-shield-lock"></i></span>
-            <input type="@(verPassword ? "text" : "password")" 
-                   class="form-control form-control-lg bg-dark border-secondary border-opacity-25 text-white shadow-none" 
-                   @bind="password" placeholder="••••••••" @onkeydown="VerificarEnter" />
-            
-            <button class="btn btn-dark border-secondary border-opacity-25 text-muted" type="button" @onclick="TogglePassword">
-                <i class="bi @(verPassword ? "bi-eye-slash-fill" : "bi-eye-fill")"></i>
-            </button>
+        <div class="mb-5">
+            <label class="form-label text-muted fw-bold small">CONTRASEÑA</label>
+            <div class="input-group">
+                <span class="input-group-text bg-dark border-secondary border-opacity-25 text-muted"><i class="bi bi-shield-lock"></i></span>
+                <input type="password" name="password" class="form-control form-control-lg bg-dark border-secondary border-opacity-25 text-white shadow-none" placeholder="••••••••" required />
+            </div>
         </div>
-    </div>
 
-    <button class="btn btn-primary w-100 py-3 fw-black fs-5 rounded-3 shadow-orange mb-3 d-flex align-items-center justify-content-center" 
-            @onclick="IniciarSesion" disabled="@cargando">
-        @if (cargando)
-        {
-            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-            <span>ENTRANDO...</span>
-        }
-        else
-        {
+        <button type="submit" class="btn btn-primary w-100 py-3 fw-black fs-5 rounded-3 shadow-orange mb-3 d-flex align-items-center justify-content-center">
             <span>INICIAR SESIÓN</span>
-        }
-    </button>
+        </button>
+    </form>
     
     <div class="text-center">
         <small class="text-white-50">Nicaragua — @DateTime.Now.Year</small>
@@ -78,60 +54,17 @@
 </style>
 
 @code {
-    private string email = "";
-    private string password = "";
-    private string mensajeError = "";
-    private bool verPassword = false;
-    private bool cargando = false;
+    [SupplyParameterFromQuery]
+    public string? error { get; set; }
+    
+    private string errorMessage = "";
 
-    private void TogglePassword() => verPassword = !verPassword;
-
-    private async Task IniciarSesion()
+    protected override void OnInitialized()
     {
-        if (cargando) return;
-        
-        mensajeError = "";
-        
-        // limpiamos espacions
-        var emailInput = email?.Trim() ?? "";
-        var passInput = password?.Trim() ?? "";
-
-        if (string.IsNullOrWhiteSpace(emailInput) || string.IsNullOrWhiteSpace(passInput))
-        {
-            mensajeError = "Campos vacíos.";
-            return;
+        // Si hay error de credenciales, la API lo manda por la URL y lo atrapamos aquí
+        if (!string.IsNullOrEmpty(error)) 
+        { 
+            errorMessage = error; 
         }
-
-        try 
-        {
-            cargando = true;
-            StateHasChanged();
-
-            // llamada al servicio que ya tiene BCrypt funcionando
-            var usuario = await AuthService.LoginAsync(emailInput, passInput);
-
-            if (usuario == null)
-            {
-                mensajeError = "Credenciales incorrectas.";
-                cargando = false;
-            }
-            else
-            {
-             var customAuth = (Gymio.Security.CustomAuthStateProvider)AuthStateProvider;
-                await customAuth.IniciarSesion(usuario.NombreCompleto);
-                
-                NavigationManager.NavigateTo("/", forceLoad: true);
-            }
-        }
-        catch (Exception ex)
-        {
-            mensajeError = "Error de sistema.";
-            cargando = false;
-        }
-    }
-
-    private async Task VerificarEnter(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") await IniciarSesion();
     }
 }
