@@ -17,7 +17,8 @@
     }
 
     <form action="/api/login" method="post">
-        
+        <AntiforgeryToken />
+
         <div class="mb-4">
             <label class="form-label text-muted fw-bold small">CORREO ELECTRÓNICO</label>
             <div class="input-group">
