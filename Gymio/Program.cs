@@ -13,6 +13,7 @@ builder.Services.AddDbContext<GymioDbContext>(options =>
 //servicio de clientes
 builder.Services.AddScoped<IClienteService,ClienteService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
+builder.Services.AddScoped<ISuscripcionService, SuscripcionService>();
 
 // Configuración de MongoDB
 var mongoConnectionString = builder.Configuration.GetConnectionString("GymioMongoConnection");

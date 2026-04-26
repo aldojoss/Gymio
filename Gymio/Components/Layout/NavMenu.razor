@@ -1,7 +1,7 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark shadow-sm">
     <div class="container-fluid">
-        <a class="navbar-brand fw-black fs-4 tracking-tight" href="">
-            <span class="me-2">🏋️‍♂️</span> GYMIO
+        <a class="navbar-brand fw-black fs-3 d-flex align-items-center" href="">
+            <span class="text-primary me-2">⚡</span> GYMIO
         </a>
     </div>
 </div>
@@ -9,74 +9,55 @@
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column mt-3">
+    <nav class="flex-column">
         
-        <div class="nav-item px-3 mb-2">
-            <NavLink class="nav-link rounded-3 px-3 py-2 d-flex align-items-center" href="" Match="NavLinkMatch.All">
-                <span class="fs-5 me-3">🏠</span> <span class="fw-medium">Panel de Control</span>
+        <div class="nav-category mt-3">General</div>
+        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link rounded-3" href="" Match="NavLinkMatch.All">
+                <i class="bi bi-grid-1x2-fill me-3"></i> Dashboard
             </NavLink>
         </div>
 
-        <div class="text-muted small fw-bold px-4 mb-2 text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">
-            Administración
-        </div>
+        <div class="nav-category mt-4">Operaciones</div>
 
-        <div class="nav-item px-3 mb-1">
-            <NavLink class="nav-link rounded-3 px-3 py-2 d-flex align-items-center" href="clientes">
-                <span class="fs-5 me-3">👥</span> <span class="fw-medium">Gestión de Socios</span>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link rounded-3 pulse-access" href="acceso">
+                <i class="bi bi-qr-code-scan me-3"></i> Control de Acceso
             </NavLink>
         </div>
 
-        <div class="nav-item px-3 mb-1">
-            <NavLink class="nav-link rounded-3 px-3 py-2 d-flex align-items-center" href="nuevo-cliente">
-                <span class="fs-5 me-3">➕</span> <span class="fw-medium">Nuevo Registro</span>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link rounded-3" href="suscripciones">
+                <i class="bi bi-credit-card-fill me-3"></i> Suscripciones y Pagos
             </NavLink>
         </div>
 
-        <div class="text-muted small fw-bold px-4 mb-2 mt-4 text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">
-            Operaciones
-        </div>
-
-        <div class="nav-item px-3 mb-1">
-            <NavLink class="nav-link rounded-3 px-3 py-2 d-flex align-items-center" href="ventas">
-                <span class="fs-5 me-3">💰</span> <span class="fw-medium">Ventas e Ingresos</span>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link rounded-3" href="clientes">
+                <i class="bi bi-people-fill me-3"></i> Directorio Socios
             </NavLink>
         </div>
 
-        <div class="nav-item px-3 mb-1">
-            <NavLink class="nav-link rounded-3 px-3 py-2 d-flex align-items-center" href="egresos">
-                <span class="fs-5 me-3">📉</span> <span class="fw-medium">Egresos / Gastos</span>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link rounded-3" href="nuevo-cliente">
+                <i class="bi bi-person-plus-fill me-3"></i> Registrar Socio
             </NavLink>
         </div>
 
-        <div class="text-muted small fw-bold px-4 mb-2 mt-4 text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">
-            Gimnasio
+        <div class="nav-category mt-4">Administración</div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link rounded-3" href="planes">
+                <i class="bi bi-tags-fill me-3"></i> Catálogo de Planes
+            </NavLink>
         </div>
 
-        <div class="nav-item px-3 mb-1">
-            <NavLink class="nav-link rounded-3 px-3 py-2 d-flex align-items-center" href="rutinas">
-                <span class="fs-5 me-3">📝</span> <span class="fw-medium">Planes de Rutina</span>
-            </NavLink>
+        <div class="nav-item px-3 text-muted opacity-50">
+            <div class="nav-link rounded-3">
+                <i class="bi bi-bar-chart-line-fill me-3"></i> Reportes (Próximamente)
+            </div>
         </div>
 
     </nav>
 </div>
-
-<style>
-    /* Estilizamos el estado activo del menú para que se vea moderno */
-    .nav-link {
-        color: rgba(255,255,255,0.7) !important;
-        transition: all 0.2s ease;
-    }
-    
-        .nav-link:hover {
-            background-color: rgba(255,255,255,0.1);
-            color: white !important;
-        }
-
-        .nav-link.active {
-            background-color: var(--bs-primary) !important;
-            color: white !important;
-            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
-        }
-</style>

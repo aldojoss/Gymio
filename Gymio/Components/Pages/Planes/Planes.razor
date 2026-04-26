@@ -5,51 +5,51 @@
 @using Gymio.Interfaces
 @inject IPlanService PlanService
 
-<div class="container-fluid py-5 bg-light min-vh-100">
+<div class="container-fluid py-5 min-vh-100 text-light">
     <div class="container">
         
         <div class="row mb-5">
             <div class="col-12">
-                <h2 class="fw-black text-dark mb-1" style="letter-spacing: -1px;">Catálogo de Planes</h2>
-                <p class="text-secondary fw-medium">Administra las membresías y tarifas de tu gimnasio.</p>
+                <h2 class="fw-bold mb-0 text-white">Catálogo de Planes</h2>
+                <p class="text-white opacity-75 fw-normal">Administra las membresías y tarifas de tu gimnasio.</p>
             </div>
         </div>
 
         <div class="row g-4">
             
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm rounded-4 sticky-top" style="top: 2rem;">
+                <div class="card bg-dark border-secondary bg-opacity-75 shadow-sm rounded-4 sticky-top text-white" style="top: 2rem;">
                     <div class="card-body p-4">
-                        <h5 class="fw-bold mb-4">➕ Nuevo Plan</h5>
+                        <h5 class="fw-bold mb-4 text-white">➕ Nuevo Plan</h5>
                         
                         @if (guardadoExitoso)
                         {
-                            <div class="alert alert-success py-2 fw-bold">✅ ¡Plan creado!</div>
+                            <div class="alert alert-success bg-success bg-opacity-25 text-success border-success py-2 fw-bold">✅ ¡Plan creado!</div>
                         }
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">Nombre del Plan</label>
-                            <input type="text" class="form-control border-secondary-subtle" placeholder="Ej: Mensualidad, Quincena..." @bind="nuevoPlan.Nombre" />
+                            <label class="form-label fw-bold small text-white-50">Nombre del Plan</label>
+                            <input type="text" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="Ej: Mensualidad, Quincena..." @bind="nuevoPlan.Nombre" />
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">Precio ($)</label>
+                            <label class="form-label fw-bold small text-white-50">Precio ($)</label>
                             <div class="input-group">
-                                <span class="input-group-text bg-white border-secondary-subtle">$</span>
-                                <input type="number" step="0.01" class="form-control border-secondary-subtle" placeholder="0.00" @bind="nuevoPlan.Precio" />
+                                <span class="input-group-text bg-secondary bg-opacity-50 text-white border-secondary border-end-0">$</span>
+                                <input type="number" step="0.01" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="0.00" @bind="nuevoPlan.Precio" />
                             </div>
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label fw-bold small text-muted">Duración en Días</label>
+                            <label class="form-label fw-bold small text-white-50">Duración en Días</label>
                             <div class="input-group">
-                                <input type="number" class="form-control border-secondary-subtle" placeholder="Ej: 30" @bind="nuevoPlan.DuracionDias" />
-                                <span class="input-group-text bg-white border-secondary-subtle">días</span>
+                                <input type="number" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="Ej: 30" @bind="nuevoPlan.DuracionDias" />
+                                <span class="input-group-text bg-secondary bg-opacity-50 text-white border-secondary border-start-0">días</span>
                             </div>
-                            <small class="text-muted d-block mt-1">Tiempo que el socio tendrá acceso.</small>
+                            <small class="text-white-50 d-block mt-1">Tiempo que el socio tendrá acceso.</small>
                         </div>
 
-                        <button class="btn btn-primary fw-bold w-100 py-2 rounded-3 shadow-sm" @onclick="GuardarPlan">
+                        <button class="btn btn-primary fw-bold w-100 py-2 rounded-3 shadow-sm border-0" @onclick="GuardarPlan">
                             Guardar Tarifa
                         </button>
                     </div>
@@ -64,8 +64,8 @@
                     }
                     else if (!listaPlanes.Any())
                     {
-                        <div class="text-center py-5 text-muted fw-bold">
-                            No hay planes registrados. Crea tu primera tarifa a la izquierda.
+                        <div class="text-center py-5 text-white-50 fw-bold">
+                            No hay planes registrados.<br>Crea tu primera tarifa a la izquierda.
                         </div>
                     }
                     else
@@ -73,35 +73,35 @@
                         @foreach (var plan in listaPlanes)
                         {
                             <div class="col-md-6">
-                                <div class="card border-2 border-primary border-opacity-10 shadow-sm rounded-4 h-100 transition-hover">
+                                <div class="card bg-dark border-secondary bg-opacity-75 shadow-sm rounded-4 h-100 transition-hover text-white">
                                     <div class="card-body p-4 d-flex flex-column">
                                         <div class="d-flex justify-content-between align-items-start mb-3">
-                                            <h4 class="fw-bold text-dark mb-0">@plan.Nombre</h4>
+                                            <h4 class="fw-bold text-white mb-0">@plan.Nombre</h4>
                                             @if(plan.Activo)
                                             {
-                                                <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-2">Activo</span>
+                                                <span class="badge bg-success bg-opacity-25 text-success px-2 py-1 rounded-2 border border-success">Activo</span>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1 rounded-2">Inactivo</span>
+                                                <span class="badge bg-danger bg-opacity-25 text-danger px-2 py-1 rounded-2 border border-danger">Inactivo</span>
                                             }
                                         </div>
                                         
-                                        <h2 class="fw-black text-primary mb-3">
+                                        <h2 class="fw-bold text-primary mb-3">
                                             $@plan.Precio.ToString("0.00")
                                         </h2>
                                         
-                                        <div class="bg-light rounded-3 p-3 mt-auto mb-3 border">
+                                        <div class="bg-secondary bg-opacity-25 rounded-3 p-3 mt-auto mb-3 border border-secondary border-opacity-50">
                                             <div class="d-flex align-items-center">
                                                 <span class="fs-4 me-2">⏱️</span>
                                                 <div>
-                                                    <div class="small text-muted fw-bold text-uppercase">Vigencia del Pase</div>
-                                                    <div class="fw-bold text-dark">@plan.DuracionDias días de acceso</div>
+                                                    <div class="small text-white-50 fw-bold text-uppercase">Vigencia del Pase</div>
+                                                    <div class="fw-bold text-white">@plan.DuracionDias días de acceso</div>
                                                 </div>
                                             </div>
                                         </div>
                                         
-                                        <button class="btn btn-outline-secondary btn-sm fw-bold w-100 rounded-3">
+                                        <button class="btn btn-outline-light btn-sm fw-bold w-100 rounded-3 border-secondary border-opacity-50 hover-light">
                                             Editar Plan
                                         </button>
                                     </div>
@@ -118,7 +118,11 @@
 
 <style>
     .transition-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-    .transition-hover:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+    .transition-hover:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1.5rem rgba(0,0,0,0.4)!important; }
+    
+    .hover-light:hover { background-color: rgba(255, 255, 255, 0.1); }
+    
+    ::placeholder { color: rgba(255, 255, 255, 0.3) !important; }
 </style>
 
 @code {
@@ -138,17 +142,15 @@
 
     private async Task GuardarPlan()
     {
-        // validamos que tenga nombre, el precio no sea negativo y los días sean mayores a 0
         if (!string.IsNullOrWhiteSpace(nuevoPlan.Nombre) && nuevoPlan.Precio >= 0 && nuevoPlan.DuracionDias > 0)
         {
             bool exito = await PlanService.CrearPlanAsync(nuevoPlan);
             if (exito)
             {
                 guardadoExitoso = true;
-                nuevoPlan = new Plan { Activo = true }; // Limpiamos el formulario
-                await CargarPlanes();   // Refrescamos la lista
+                nuevoPlan = new Plan { Activo = true }; 
+                await CargarPlanes();
                 StateHasChanged();
-                
                 await Task.Delay(3000);
                 guardadoExitoso = false;
                 StateHasChanged();
