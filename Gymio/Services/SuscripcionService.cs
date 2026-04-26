@@ -81,5 +81,39 @@ namespace Gymio.Services
                 .Take(10)
                 .ToListAsync();
         }
+
+        public async Task<(bool Permitido, string Mensaje, SuscripcionCliente? Suscripcion)> ValidarAccesoConQrAsync(string codigoQr)
+        {
+            var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.CodigoQR == codigoQr);
+            if (cliente == null)
+            {
+                return (false, "Código QR desconocido.", null);
+            }
+
+            var suscripcion = await _context.SuscripcionesClientes
+                .Include(s => s.Plan)
+                .Include(s => s.Cliente)
+                .Where(s => s.ClienteId == cliente.Id)
+                .OrderByDescending(s => s.FechaVencimiento)
+                .FirstOrDefaultAsync();
+
+            if (suscripcion == null)
+            {
+                return (false, "El socio no tiene ninguna suscripción registrada.", null);
+            }
+
+            // comparamos las fechas
+            if (suscripcion.FechaVencimiento.Date < DateTime.Today)
+            {
+                if (suscripcion.Estado == "Activa")
+                {
+                    suscripcion.Estado = "Vencida";
+                    await _context.SaveChangesAsync();
+                }
+                return (false, $"MEMBRESÍA VENCIDA ({suscripcion.FechaVencimiento.ToShortDateString()})", suscripcion);
+            }
+
+            return (true, "ACCESO PERMITIDO", suscripcion);
+        }
     }
 }
