@@ -3,7 +3,7 @@ using Gymio.Models;
 
 namespace Gymio.Data
 {
-    public class GymioDbContext : DbContext
+    public class GymioDbContext  : DbContext
     {
         public GymioDbContext(DbContextOptions<GymioDbContext> options) : base(options)
         {

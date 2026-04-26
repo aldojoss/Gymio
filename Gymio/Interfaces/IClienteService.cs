@@ -10,5 +10,6 @@ namespace Gymio.Interfaces
         
         Task<Cliente?> ObtenerClientePorQRAsync(string codigoQR);
         Task<bool> RegistrarAsistenciaAsync(int clienteId, bool accesoPermitido);
+
     }
 }

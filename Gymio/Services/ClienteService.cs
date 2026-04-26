@@ -25,7 +25,7 @@ namespace Gymio.Services
 
             nuevoCliente.CodigoQR = $"GYM-{fecha}-{identificadorUnico}";
 
-            // no creqo eu pase
+            // no creqo eu pasepero verificar que no haiga un cliente con el mismo codigo qr
             bool existe = await _context.Clientes.AnyAsync(c => c.CodigoQR == nuevoCliente.CodigoQR);
             if (existe)
             {
@@ -51,10 +51,11 @@ namespace Gymio.Services
         
             if (!string.IsNullOrWhiteSpace(terminoBusqueda))
             {
-                consulta = consulta.Where(c =>
-                    c.Nombre.Contains(terminoBusqueda) ||
-                    c.Apellido.Contains(terminoBusqueda) ||
-                    c.CodigoQR.Contains(terminoBusqueda));
+                consulta = consulta.Where(c=>c.Nombre.Contains(terminoBusqueda)||
+                c.Apellido.Contains(terminoBusqueda) ||
+                c.CodigoQR.Contains(terminoBusqueda));
+
+
             }
 
           
