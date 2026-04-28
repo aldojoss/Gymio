@@ -1,13 +1,9 @@
 ﻿@page "/clientes"
-
 @attribute [Authorize]
+@rendermode InteractiveServer
 @using Gymio.Models
 @using Gymio.Interfaces
-@using Gymio.Services
 @inject IClienteService ClienteService
-
-
-
 
 <div class="container-fluid py-4">
     <div class="container">
@@ -18,15 +14,11 @@
             <div class="col-md-5">
                 <div class="input-group">
                     <span class="input-group-text bg-body-tertiary border-secondary-subtle">🔍</span>
-                    <input type="text" class="form-control border-secondary-subtle bg-body"
-                           placeholder="Buscar por nombre o Código QR..."
-                           @bind="terminoBusqueda" @bind:event="oninput" @onkeyup="RealizarBusqueda" />
+                    <input type="text" class="form-control border-secondary-subtle bg-body" placeholder="Buscar por nombre o Código QR..." @bind="terminoBusqueda" @bind:event="oninput" @onkeyup="RealizarBusqueda" />
                 </div>
             </div>
             <div class="col-md-3 text-end">
-                <a href="/nuevo-cliente" class="btn btn-primary fw-bold w-100">
-                    + Registrar Socio
-                </a>
+                <a href="/nuevo-cliente" class="btn btn-primary fw-bold w-100">+ Registrar Socio</a>
             </div>
         </div>
 
@@ -46,20 +38,11 @@
                         <tbody>
                             @if (listaClientes == null)
                             {
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">
-                                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                        Cargando datos...
-                                    </td>
-                                </tr>
+                                <tr><td colspan="5" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm me-2"></div> Cargando datos...</td></tr>
                             }
                             else if (!listaClientes.Any())
                             {
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted fw-bold">
-                                        No se encontraron clientes con esos datos.
-                                    </td>
-                                </tr>
+                                <tr><td colspan="5" class="text-center py-5 text-muted fw-bold">No se encontraron clientes.</td></tr>
                             }
                             else
                             {
@@ -82,11 +65,12 @@
                                             }
                                             else
                                             {
+
                                                 <span class="badge bg-danger">Inactivo</span>
                                             }
                                         </td>
                                         <td class="text-end pe-4">
-                                            <button class="btn btn-sm btn-outline-secondary fw-bold">Ver Perfil</button>
+                                            <button class="btn btn-sm btn-outline-primary fw-bold" @onclick="() => AbrirModalEdicion(cliente)">Editar</button>
                                         </td>
                                     </tr>
                                 }
@@ -99,16 +83,64 @@
     </div>
 </div>
 
+@if (mostrarModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.6);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-0">
+                    <h5 class="modal-title fw-bold">Editar Socio</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body p-4 bg-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Nombre</label>
+                            <input type="text" class="form-control" @bind="clienteActual.Nombre" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Apellido</label>
+                            <input type="text" class="form-control" @bind="clienteActual.Apellido" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Teléfono</label>
+                            <input type="text" class="form-control" @bind="clienteActual.Telefono" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Email</label>
+                            <input type="email" class="form-control" @bind="clienteActual.Email" />
+                        </div>
+                        <div class="col-12 mt-4">
+                            <div class="form-check form-switch p-3 bg-body-secondary rounded-3">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="estadoSocio" @bind="clienteActual.Activo" style="transform: scale(1.3);">
+                                <label class="form-check-label fw-bold text-body" for="estadoSocio">
+                                    @(clienteActual.Activo ? "El cliente tiene acceso permitido (Activo)" : "Acceso bloqueado (Inactivo)")
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-body-tertiary border-0">
+                    <button type="button" class="btn btn-secondary fw-bold" @onclick="CerrarModal">Cancelar</button>
+                    <button type="button" class="btn btn-primary fw-bold" @onclick="GuardarCambiosCliente">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Cliente>? listaClientes;
     private string terminoBusqueda = "";
 
-  
+    // variables para el Modal
+    private bool mostrarModal = false;
+    private Cliente clienteActual = new Cliente();
+
     protected override async Task OnInitializedAsync()
     {
         await CargarClientes();
     }
-
 
     private async Task RealizarBusqueda()
     {
@@ -118,5 +150,36 @@
     private async Task CargarClientes()
     {
         listaClientes = await ClienteService.ObtenerClientesAsync(terminoBusqueda);
+    }
+
+    // se clona
+    private void AbrirModalEdicion(Cliente cliente)
+    {
+        clienteActual = new Cliente
+        {
+            Id = cliente.Id,
+            Nombre = cliente.Nombre,
+            Apellido = cliente.Apellido,
+            Email = cliente.Email,
+            Telefono = cliente.Telefono,
+            CodigoQR = cliente.CodigoQR,
+            FechaRegistro = cliente.FechaRegistro,
+            Activo = cliente.Activo
+        };
+        mostrarModal = true;
+    }
+
+    private void CerrarModal()
+    {
+        mostrarModal = false;
+    }
+
+    private async Task GuardarCambiosCliente()
+    {
+        
+        await ClienteService.ActualizarClienteAsync(clienteActual);
+  
+        await CargarClientes();
+        mostrarModal = false;
     }
 }

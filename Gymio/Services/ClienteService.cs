@@ -15,6 +15,17 @@ namespace Gymio.Services
             _context = context;
         }
 
+        public async Task<int>CargarCantidadClientes()
+        {
+            return await _context.Clientes.CountAsync();
+        }
+
+        public async Task<decimal>CantidadIngresosHoy()
+        {
+          
+            return await _context.Ventas.Where(c => c.FechaVenta.Date == DateTime.Today).SumAsync(c => c.Total);
+        }
+
 
         public async Task<bool> RegistrarClienteAsync(Cliente nuevoCliente)
         {
@@ -77,6 +88,17 @@ namespace Gymio.Services
             };
 
             _context.Asistencias.Add(asistencia);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ActualizarClienteAsync(Cliente cliente)
+        {
+            var clienteTrackeado = await _context.Clientes.FindAsync(cliente.Id);
+
+            if (clienteTrackeado == null) { return false; }
+
+            _context.Entry(clienteTrackeado).CurrentValues.SetValues(cliente);
             await _context.SaveChangesAsync();
             return true;
         }

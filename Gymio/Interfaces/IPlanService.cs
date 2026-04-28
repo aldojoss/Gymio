@@ -6,5 +6,7 @@ namespace Gymio.Interfaces
     {
         Task<List<Plan>> ObtenerPlanesAsync();
         Task<bool> CrearPlanAsync(Plan nuevoPlan);
+
+        Task<bool> ActualizarPlanAsync(Plan plan);
     }
 }

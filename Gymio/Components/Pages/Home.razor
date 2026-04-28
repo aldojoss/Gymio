@@ -1,9 +1,156 @@
 ﻿@page "/"
-
 @attribute [Authorize]
+@using Gymio.Models
+@using Gymio.Interfaces
+@inject IClienteService ClienteService
+@inject IVentaService VentaService
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Gymio - Dashboard</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container-fluid px-4 py-3">
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h5 class="text-primary fw-bold mb-0">BIENVENIDO DE NUEVO</h5>
+            <h1 class="text-white fw-black display-5" style="letter-spacing: -2px;">
+                DASHBOARD <span class="text-secondary opacity-50">GENERAL</span>
+            </h1>
+        </div>
+        <div class="col-auto">
+            <div class="bg-dark p-2 rounded-3 border border-secondary border-opacity-25 shadow-sm">
+                <span class="text-white-50 small fw-bold">HOY: @DateTime.Now.ToString("dd MMM, yyyy")</span>
+            </div>
+        </div>
+    </div>
 
-Welcome to your new app.
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card bg-gradient-orange p-4 rounded-4 shadow-orange position-relative overflow-hidden">
+                <i class="bi bi-currency-dollar card-icon"></i>
+                <div class="position-relative">
+                    <p class="text-white fw-bold small mb-1 opacity-75">INGRESOS DEL DÍA</p>
+                    <h2 class="text-white fw-black mb-0">C$ @ingresosHoy.ToString("N0")</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card bg-dark-card p-4 rounded-4 border border-secondary border-opacity-10 position-relative overflow-hidden">
+                <i class="bi bi-people card-icon-dark"></i>
+                <div class="position-relative">
+                    <p class="text-white-50 fw-bold small mb-1">SOCIOS TOTALES</p>
+                    <h2 class="text-white fw-black mb-0">@totalClientes</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card bg-dark-card p-4 rounded-4 border border-secondary border-opacity-10 position-relative overflow-hidden">
+                <i class="bi bi-cart-check card-icon-dark"></i>
+                <div class="position-relative">
+                    <p class="text-white-50 fw-bold small mb-1">VENTAS DEL MES</p>
+                    <h2 class="text-white fw-black mb-0">@ventasMes</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card bg-dark-card p-4 rounded-4 border border-secondary border-opacity-10 position-relative overflow-hidden">
+                <i class="bi bi-shield-check card-icon-dark"></i>
+                <div class="position-relative">
+                    <p class="text-white-50 fw-bold small mb-1">ESTADO SISTEMA</p>
+                    <h2 class="text-success fw-black mb-0 small"><i class="bi bi-circle-fill me-2 fs-6"></i>ONLINE</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-8">
+            <div class="card bg-dark bg-opacity-50 border-0 rounded-4 p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="text-white fw-bold mb-0">ACTIVIDAD RECIENTE</h5>
+                    <a href="suscripciones" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Ver Todo</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover border-0 align-middle">
+                        <thead class="text-white-50 small">
+                            <tr>
+                                <th class="border-0">CLIENTE</th>
+                                <th class="border-0">MÉTODO</th>
+                                <th class="border-0">TOTAL</th>
+                                <th class="border-0 text-end">FECHA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var v in ultimasVentas)
+                            {
+                                <tr>
+                                    <td class="border-0 fw-bold">@v.Cliente?.Nombre</td>
+                                    <td class="border-0"><span class="badge bg-secondary bg-opacity-25 text-white-50">@v.MetodoPago</span></td>
+                                    <td class="border-0 text-primary fw-bold">C$ @v.Total.ToString("N0")</td>
+                                    <td class="border-0 text-end text-white-50 small">@v.FechaVenta.ToString("hh:mm tt")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-4 p-4 h-100">
+                <h5 class="text-primary fw-bold mb-4">ACCESO RÁPIDO</h5>
+                <div class="d-grid gap-3">
+                    <a href="nuevo-cliente" class="btn btn-dark text-start p-3 rounded-3 border-0 d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-20 p-2 rounded-2 me-3 text-primary"><i class="bi bi-person-plus"></i></div>
+                        <div>
+                            <div class="text-white fw-bold mb-0">Registrar Socio</div>
+                            <div class="text-white-50 small">Inscripción inmediata</div>
+                        </div>
+                    </a>
+                    <a href="acceso" class="btn btn-dark text-start p-3 rounded-3 border-0 d-flex align-items-center">
+                        <div class="bg-success bg-opacity-20 p-2 rounded-2 me-3 text-success"><i class="bi bi-qr-code-scan"></i></div>
+                        <div>
+                            <div class="text-white fw-bold mb-0">Control de Acceso</div>
+                            <div class="text-white-50 small">Validar membresía</div>
+                        </div>
+                    </a>
+                </div>
+                <div class="mt-auto pt-4 text-center">
+                    <p class="text-white-50 small mb-0 font-italic">"La disciplina es el puente entre metas y logros."</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .fw-black { font-weight: 900 !important; }
+    .bg-gradient-orange { background: linear-gradient(135deg, #ff6b00 0%, #ff8c33 100%); }
+    .bg-dark-card { background-color: #1a1a1a; }
+    .shadow-orange { box-shadow: 0 10px 30px rgba(255, 107, 0, 0.25); }
+    
+    .stat-card { transition: transform 0.3s ease; cursor: default; }
+    .stat-card:hover { transform: translateY(-5px); }
+    
+    .card-icon { font-size: 5rem; position: absolute; right: -10px; bottom: -20px; color: rgba(255,255,255,0.1); transform: rotate(-15deg); }
+    .card-icon-dark { font-size: 5rem; position: absolute; right: -10px; bottom: -20px; color: rgba(255,107,0,0.05); transform: rotate(-15deg); }
+    
+    .table-dark { background-color: transparent; }
+    .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.02); }
+</style>
+
+@code {
+    private int totalClientes = 0;
+    private decimal ingresosHoy = 0;
+    private int ventasMes = 0;
+    private List<Venta> ultimasVentas = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        totalClientes = await ClienteService.CargarCantidadClientes();
+        ingresosHoy = await VentaService.GetIngresosHoyAsync();
+        ventasMes = await VentaService.GetTotalVentasMesAsync();
+        ultimasVentas = await VentaService.GetUltimasVentasAsync(5);
+    }
+}

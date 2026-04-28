@@ -25,17 +25,24 @@ builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ISuscripcionService, SuscripcionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IVentaService, VentaService>();
+
 
 // =====================================================================
-// 🔒 1. CONFIGURACIÓN DE SEGURIDAD NATIVA (COOKIES)
-// Aquí le decimos a .NET que use Cookies reales y quite el error 401
+// aqui implementamos el servicio de seguridad por cookies, que es el más sencillo para este tipo de aplicaciones.
+// 
 // =====================================================================
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+    .AddCookie(option =>
     {
-        options.LoginPath = "/login"; // Redirige aquí si no hay sesión
-        options.AccessDeniedPath = "/login";
-    });
+        option.LoginPath = "/login"; //si el usuario no esta autenticado osea no tiene la cookie, lo redirige a esta ruta
+        option.AccessDeniedPath = "/login"; //si su rol no es el correcto, lo redirige a esta ruta
+    }
+
+
+    );
+
+//agregamos el servicio de autorización y el estado de autenticación en cascada para que los componentes puedan acceder a la información del usuario autenticado.
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
 // =====================================================================

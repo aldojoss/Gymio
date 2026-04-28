@@ -65,7 +65,7 @@
                                                 <div class="fw-bold">@p.Nombre</div>
                                                 <small class="opacity-75">Vigencia: @p.DuracionDias días</small>
                                             </div>
-                                            <span class="fs-5 fw-black">$@p.Precio.ToString("0.00")</span>
+                                            <span class="fs-5 fw-black">C$@p.Precio.ToString("0.00")</span>
                                         </div>
                                     </button>
                                 </div>
@@ -187,6 +187,7 @@
 
     private async Task CargarDatos()
     {
+        //cargar las listas
         todosLosClientes = await ClienteService.ObtenerClientesAsync();
         planesDisponibles = await PlanService.ObtenerPlanesAsync();
         suscripcionesRecientes = await SuscripcionService.ObtenerSuscripcionesRecientesAsync();
@@ -203,17 +204,17 @@
         try 
         {
             mensajeError = "";
-            // Usamos UsuarioId = 1 temporalmente (Cajero Admin)
-            bool exito = await SuscripcionService.RegistrarSuscripcionAsync(clienteSeleccionadoId, planSeleccionadoId, 1, metodoPagoSeleccionado);
+            // usamos el ususario del admin que tiene id 2  para registrar la suscripcion
+            bool exito = await SuscripcionService.RegistrarSuscripcionAsync(clienteSeleccionadoId, planSeleccionadoId, 2, metodoPagoSeleccionado);
             
             if (exito)
             {
-                // Limpiar selección
+                // se limpian las selecciones para una nueva transacción
                 clienteSeleccionadoId = 0;
                 planSeleccionadoId = 0;
                 busquedaCliente = "";
                 
-                // Actualizar historial
+                // actualizar historial
                 await CargarDatos();
                 StateHasChanged();
             }

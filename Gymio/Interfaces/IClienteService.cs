@@ -1,4 +1,5 @@
 ﻿using Gymio.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Gymio.Interfaces
 {
@@ -10,6 +11,12 @@ namespace Gymio.Interfaces
         
         Task<Cliente?> ObtenerClientePorQRAsync(string codigoQR);
         Task<bool> RegistrarAsistenciaAsync(int clienteId, bool accesoPermitido);
+
+        Task<int> CargarCantidadClientes();
+        Task<decimal> CantidadIngresosHoy();
+        Task<bool> ActualizarClienteAsync(Cliente cliente);
+       
+
 
     }
 }

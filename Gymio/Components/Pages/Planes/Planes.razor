@@ -21,38 +21,53 @@
             <div class="col-lg-4">
                 <div class="card bg-dark border-secondary bg-opacity-75 shadow-sm rounded-4 sticky-top text-white" style="top: 2rem;">
                     <div class="card-body p-4">
-                        <h5 class="fw-bold mb-4 text-white">➕ Nuevo Plan</h5>
+                        <h5 class="fw-bold mb-4 text-white">@(modoEdicion ? "✏️ Editar Plan" : "➕ Nuevo Plan")</h5>
                         
                         @if (guardadoExitoso)
                         {
-                            <div class="alert alert-success bg-success bg-opacity-25 text-success border-success py-2 fw-bold">✅ ¡Plan creado!</div>
+                            <div class="alert alert-success bg-success bg-opacity-25 text-success border-success py-2 fw-bold">
+                                ✅ @(modoEdicion ? "¡Plan actualizado!" : "¡Plan creado!")
+                            </div>
                         }
 
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-white-50">Nombre del Plan</label>
-                            <input type="text" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="Ej: Mensualidad, Quincena..." @bind="nuevoPlan.Nombre" />
+                            <input type="text" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="Ej: Mensualidad..." @bind="planActual.Nombre" />
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-white-50">Precio ($)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-secondary bg-opacity-50 text-white border-secondary border-end-0">$</span>
-                                <input type="number" step="0.01" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="0.00" @bind="nuevoPlan.Precio" />
+                                <input type="number" step="0.01" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="0.00" @bind="planActual.Precio" />
                             </div>
                         </div>
 
                         <div class="mb-4">
                             <label class="form-label fw-bold small text-white-50">Duración en Días</label>
                             <div class="input-group">
-                                <input type="number" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="Ej: 30" @bind="nuevoPlan.DuracionDias" />
+                                <input type="number" class="form-control bg-transparent text-white border-secondary shadow-none" placeholder="Ej: 30" @bind="planActual.DuracionDias" />
                                 <span class="input-group-text bg-secondary bg-opacity-50 text-white border-secondary border-start-0">días</span>
                             </div>
-                            <small class="text-white-50 d-block mt-1">Tiempo que el socio tendrá acceso.</small>
                         </div>
 
-                        <button class="btn btn-primary fw-bold w-100 py-2 rounded-3 shadow-sm border-0" @onclick="GuardarPlan">
-                            Guardar Tarifa
-                        </button>
+                        @if (modoEdicion)
+                        {
+                            <div class="form-check form-switch mb-4">
+                                <input class="form-check-input" type="checkbox" id="estadoPlan" @bind="planActual.Activo">
+                                <label class="form-check-label text-white-50 fw-bold" for="estadoPlan">Plan Activo (Disponible para venta)</label>
+                            </div>
+                        }
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary fw-bold flex-grow-1 py-2 rounded-3 shadow-sm border-0" @onclick="GuardarPlan">
+                                @(modoEdicion ? "Actualizar Tarifa" : "Guardar Tarifa")
+                            </button>
+                            @if (modoEdicion)
+                            {
+                                <button class="btn btn-outline-secondary py-2 rounded-3" @onclick="CancelarEdicion">Cancelar</button>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
@@ -78,19 +93,11 @@
                                     <div class="card-body p-4 d-flex flex-column">
                                         <div class="d-flex justify-content-between align-items-start mb-3">
                                             <h4 class="fw-bold text-white mb-0">@plan.Nombre</h4>
-                                            @if(plan.Activo)
-                                            {
-                                                <span class="badge bg-success bg-opacity-25 text-success px-2 py-1 rounded-2 border border-success">Activo</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-danger bg-opacity-25 text-danger px-2 py-1 rounded-2 border border-danger">Inactivo</span>
-                                            }
+                                            @if(plan.Activo) { <span class="badge bg-success bg-opacity-25 text-success px-2 py-1 rounded-2 border border-success">Activo</span> }
+                                            else { <span class="badge bg-danger bg-opacity-25 text-danger px-2 py-1 rounded-2 border border-danger">Inactivo</span> }
                                         </div>
                                         
-                                        <h2 class="fw-bold text-primary mb-3">
-                                            C$@plan.Precio.ToString("0.00")
-                                        </h2>
+                                        <h2 class="fw-bold text-primary mb-3">C$@plan.Precio.ToString("0.00")</h2>
                                         
                                         <div class="bg-secondary bg-opacity-25 rounded-3 p-3 mt-auto mb-3 border border-secondary border-opacity-50">
                                             <div class="d-flex align-items-center">
@@ -102,7 +109,7 @@
                                             </div>
                                         </div>
                                         
-                                        <button class="btn btn-outline-light btn-sm fw-bold w-100 rounded-3 border-secondary border-opacity-50 hover-light">
+                                        <button class="btn btn-outline-light btn-sm fw-bold w-100 rounded-3 border-secondary border-opacity-50 hover-light" @onclick="() => PrepararEdicion(plan)">
                                             Editar Plan
                                         </button>
                                     </div>
@@ -112,7 +119,6 @@
                     }
                 </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -120,16 +126,15 @@
 <style>
     .transition-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .transition-hover:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1.5rem rgba(0,0,0,0.4)!important; }
-    
     .hover-light:hover { background-color: rgba(255, 255, 255, 0.1); }
-    
     ::placeholder { color: rgba(255, 255, 255, 0.3) !important; }
 </style>
 
 @code {
-    private Plan nuevoPlan = new Plan { Activo = true };
+    private Plan planActual = new Plan { Activo = true };
     private List<Plan>? listaPlanes;
     private bool guardadoExitoso = false;
+    private bool modoEdicion = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -141,15 +146,45 @@
         listaPlanes = await PlanService.ObtenerPlanesAsync();
     }
 
+    
+    private void PrepararEdicion(Plan plan)
+    {
+        planActual = new Plan
+        {
+            Id = plan.Id,
+            Nombre = plan.Nombre,
+            Precio = plan.Precio,
+            DuracionDias = plan.DuracionDias,
+            Activo = plan.Activo
+        };
+        modoEdicion = true;
+    }
+
+    private void CancelarEdicion()
+    {
+        planActual = new Plan { Activo = true };
+        modoEdicion = false;
+    }
+
     private async Task GuardarPlan()
     {
-        if (!string.IsNullOrWhiteSpace(nuevoPlan.Nombre) && nuevoPlan.Precio >= 0 && nuevoPlan.DuracionDias > 0)
+        if (!string.IsNullOrWhiteSpace(planActual.Nombre) && planActual.Precio >= 0 && planActual.DuracionDias > 0)
         {
-            bool exito = await PlanService.CrearPlanAsync(nuevoPlan);
+            bool exito = false;
+
+            if (modoEdicion)
+            {
+                exito = await PlanService.ActualizarPlanAsync(planActual);
+            }
+            else
+            {
+                exito = await PlanService.CrearPlanAsync(planActual);
+            }
+
             if (exito)
             {
                 guardadoExitoso = true;
-                nuevoPlan = new Plan { Activo = true }; 
+                CancelarEdicion(); // Resetea el form
                 await CargarPlanes();
                 StateHasChanged();
                 await Task.Delay(3000);

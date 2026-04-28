@@ -16,7 +16,7 @@ namespace Gymio.Services
 
         public async Task<Usuario?> LoginAsync(string email, string passwordPlana)
         {
-            // 1. Buscamos si existe un empleado activo con ese correo
+            // buscamos si existe un empleado activo con ese correo
             var usuario = await _context.Usuarios
                 .FirstOrDefaultAsync(u => u.Email == email && u.Activo);
 

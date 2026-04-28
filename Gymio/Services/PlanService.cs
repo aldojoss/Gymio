@@ -2,6 +2,7 @@
 using Gymio.Interfaces;
 using Gymio.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 namespace Gymio.Services
 {
@@ -15,6 +16,19 @@ namespace Gymio.Services
             _context = context;
         }
 
+        public async Task<bool> ActualizarPlanAsync(Plan plan)
+        {
+
+            var planTrackeado = await _context.Planes.FindAsync(plan.Id);
+
+            if (planTrackeado==null)
+            {
+                return false;
+            }
+            _context.Entry(planTrackeado).CurrentValues.SetValues(plan);
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
         public async Task<bool> CrearPlanAsync(Plan nuevoPlan)
         {
