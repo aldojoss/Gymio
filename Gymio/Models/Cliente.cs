@@ -18,7 +18,7 @@ namespace Gymio.Models
         public string Telefono { get; set; }
         public string Email { get; set; }
 
-        // El código QR que escanearemos en la entrada
+        // el código QR que escanearemos en la entrada
         [Required]
         [MaxLength(50)]
         public string CodigoQR { get; set; }
@@ -26,6 +26,7 @@ namespace Gymio.Models
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
         public bool Activo { get; set; } = true;
         public string? FotoUrl { get; set; }
+        public int? EntrenadorId { get; set; } 
 
         // establecemos las relaciones, un cliente puede tener muchas suscripciones y asistencias
         public ICollection<SuscripcionCliente> Suscripciones { get; set; }

@@ -1,0 +1,222 @@
+﻿@page "/portal-entrenador"
+@attribute [Authorize(Roles = "Entrenador, Administrador")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@implements IAsyncDisposable
+
+@using Gymio.Models
+@using Gymio.Interfaces
+@using Microsoft.AspNetCore.SignalR.Client
+@inject IChatService ChatService
+@inject IClienteService ClienteService
+@inject NavigationManager Nav
+
+<div class="gymio-admin-container vh-100 d-flex text-light overflow-hidden">
+    
+    <div class="sidebar glass-panel d-flex flex-column border-end border-secondary border-opacity-25 shadow-lg">
+        <div class="p-4 border-bottom border-secondary border-opacity-25">
+            <h5 class="fw-black text-uppercase tracking-widest text-primary mb-0 flex-grow-1">
+                <i class="bi bi-lightning-charge-fill me-2"></i>Mis Atletas
+            </h5>
+        </div>
+        
+        <div class="client-list overflow-auto p-3 flex-grow-1 custom-scrollbar">
+            @foreach (var cliente in misClientes)
+            {
+                bool isActive = clienteSeleccionado?.Id == cliente.Id;
+                <div class="client-card p-3 mb-2 rounded-4 transition-all @(isActive ? "active-client shadow-lg" : "hover-client")"
+                     @onclick="() => SeleccionarCliente(cliente)">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar bg-gradient-primary text-white d-flex justify-content-center align-items-center rounded-circle fw-bold shadow-sm" style="width: 45px; height: 45px;">
+                            @(cliente.Nombre.Substring(0,1))@(cliente.Apellido.Substring(0,1))
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0 fw-bold @(isActive ? "text-white" : "text-light")">@cliente.Nombre @cliente.Apellido</h6>
+                            <small class="text-white-50 d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                <i class="bi bi-upc-scan"></i> @cliente.CodigoQR
+                            </small>
+                        </div>
+                        @if(isActive) { <i class="bi bi-chevron-right text-primary"></i> }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="workspace flex-grow-1 d-flex flex-column bg-dark">
+        @if (clienteSeleccionado == null)
+        {
+            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-white-50 fade-in">
+                <div class="glass-icon-wrapper mb-4 rounded-circle d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);">
+                    <i class="bi bi-person-lines-fill display-3 text-primary"></i>
+                </div>
+                <h3 class="fw-light tracking-wide">Selecciona un atleta para comenzar</h3>
+                <p class="opacity-50">Visualiza métricas, edita rutinas y comunícate en vivo.</p>
+            </div>
+        }
+        else
+        {
+            <div class="workspace-header p-4 glass-panel border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center fade-in">
+                <div>
+                    <h2 class="fw-black mb-0 text-white">@clienteSeleccionado.Nombre @clienteSeleccionado.Apellido</h2>
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-3 mt-1">
+                        <i class="bi bi-circle-fill small me-1" style="font-size: 0.5rem;"></i> Modo Coaching Activo
+                    </span>
+                </div>
+                
+                <div class="ios-tabs d-flex p-1 rounded-pill" style="background: rgba(0,0,0,0.3);">
+                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold @(tabActual == "rutina" ? "bg-primary text-white shadow" : "text-white-50")" @onclick='() => tabActual = "rutina"'>📋 Rutina</button>
+                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold @(tabActual == "progreso" ? "bg-primary text-white shadow" : "text-white-50")" @onclick='() => tabActual = "progreso"'>📈 Métricas</button>
+                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold @(tabActual == "chat" ? "bg-primary text-white shadow" : "text-white-50")" @onclick='() => tabActual = "chat"'>💬 VIP Chat</button>
+                </div>
+            </div>
+
+            <div class="p-4 flex-grow-1 d-flex flex-column overflow-hidden position-relative" style="background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px); background-size: 30px 30px;">
+                @if (tabActual == "chat")
+                {
+                    <div class="chat-box d-flex flex-column h-100 glass-panel rounded-4 shadow-lg border border-secondary border-opacity-25 fade-in">
+                        
+                       <div class="messages-area flex-grow-1 p-4 overflow-auto custom-scrollbar" style="height: 0;">
+                            @if (!chatActual.Historial.Any())
+                            {
+                                <div class="text-center mt-5"><span class="badge bg-dark px-4 py-2 rounded-pill text-white-50">Inicio del historial cifrado</span></div>
+                            }
+                            
+                            @foreach (var msg in chatActual.Historial)
+                            {
+                                bool esEntrenador = msg.RolRemitente == "Entrenador";
+                                <div class="d-flex w-100 mb-3 @(esEntrenador ? "justify-content-end" : "justify-content-start") slide-up">
+                                    <div class="msg-bubble p-3 shadow-sm @(esEntrenador ? "entrenador-bubble" : "cliente-bubble")">
+                                        <div style="line-height: 1.4;">@msg.Texto</div>
+                                        <div class="msg-meta text-end mt-1 d-flex justify-content-end align-items-center gap-1">
+                                            @msg.FechaEnvio.ToString("h:mm tt")
+                                            @if (esEntrenador) { <i class="bi bi-check2-all text-white-50"></i> }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="input-area p-3 border-top border-secondary border-opacity-25" style="background: rgba(0,0,0,0.2);">
+                            <div class="input-group shadow-lg rounded-pill p-1 bg-dark border border-secondary border-opacity-50">
+                                <input type="text" class="form-control bg-transparent border-0 text-white shadow-none px-4" 
+                                       placeholder="Escribe una indicación para @clienteSeleccionado.Nombre..." 
+                                       @bind="nuevoMensajeTexto" @onkeyup="@(e => { if(e.Key == "Enter") EnviarMensaje(); })" />
+                                <button class="btn btn-primary rounded-pill px-4 fw-bold shadow transition-hover" @onclick="EnviarMensaje">
+                                    <i class="bi bi-send-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="h-100 d-flex align-items-center justify-content-center text-white-50 fade-in">
+                        <h4>Módulo de @(tabActual) en desarrollo...</h4>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* TEMA CYBER-MINT PARA DASHBOARD */
+.gymio-admin-container { background-color: #06070a; font-family: 'Segoe UI', Roboto, sans-serif; }
+.bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #000 !important; }
+.text-primary { color: #00FFA3 !important; }
+.bg-primary { background-color: #00FFA3 !important; color: #000 !important; }
+
+/* GLASSMORPHISM AJUSTADO AL NUEVO FONDO */
+.glass-panel { background: rgba(15, 17, 26, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+
+/* SIDEBAR Y CLIENTES */
+.sidebar { width: 320px; z-index: 10; border-color: rgba(0, 255, 163, 0.1) !important; }
+.transition-all { transition: all 0.3s ease; }
+.hover-client { cursor: pointer; border: 1px solid transparent; }
+.hover-client:hover { background: rgba(0, 255, 163, 0.05); }
+.active-client { background: linear-gradient(90deg, rgba(0,255,163,0.12) 0%, rgba(25,25,25,0) 100%); border-left: 4px solid #00FFA3; cursor: pointer; }
+
+/* CHAT BUBBLES MODERNIZADAS */
+.msg-bubble { max-width: 75%; font-size: 0.95rem; }
+/* Burbuja del Entrenador (Menta/Cyan brillante con texto oscuro) */
+.entrenador-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; font-weight: 500; border-radius: 1.2rem 1.2rem 0 1.2rem; box-shadow: 0 4px 15px rgba(0, 255, 163, 0.2); }
+/* Burbuja del Cliente (Gris espacial azulado) */
+.cliente-bubble { background: #12151f; color: #e0e4f5; border-radius: 1.2rem 1.2rem 1.2rem 0; border: 1px solid #1f2538; }
+.msg-meta { font-size: 0.7rem; opacity: 0.7; }
+
+/* ANIMACIONES */
+.fade-in { animation: fadeIn 0.4s ease-in-out; }
+.slide-up { animation: slideUp 0.3s ease-out; }
+@@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* SCROLLBAR NEÓN */
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 255, 163, 0.2); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 163, 0.6); }
+
+.tracking-widest { letter-spacing: 0.15em; }
+.tracking-wide { letter-spacing: 0.05em; }
+</style>
+
+@code {
+    private List<Cliente> misClientes = new();
+    private Cliente? clienteSeleccionado;
+    private ChatEntrenador chatActual = new();
+    private string tabActual = "chat";
+    private string nuevoMensajeTexto = "";
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var todosLosClientes = await ClienteService.ObtenerClientesAsync("");
+        misClientes = todosLosClientes.ToList();
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/chathub"))
+            .Build();
+
+        hubConnection.On<string>("ChatActualizado", async (chatId) =>
+        {
+            if (clienteSeleccionado != null && chatActual != null && chatActual.Id == chatId)
+            {
+                chatActual = await ChatService.ObtenerOCrearChatAsync(clienteSeleccionado.Id, 2);
+                await InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task SeleccionarCliente(Cliente cliente)
+    {
+        clienteSeleccionado = cliente;
+        chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, 2);
+    }
+
+    private async Task EnviarMensaje()
+    {
+        if (!string.IsNullOrWhiteSpace(nuevoMensajeTexto))
+        {
+            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Entrenador", RemitenteId = 2 };
+            await ChatService.EnviarMensajeAsync(chatActual.Id!, msg);
+            
+            if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
+            {
+                await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
+            }
+
+            chatActual.Historial.Add(msg);
+            nuevoMensajeTexto = "";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

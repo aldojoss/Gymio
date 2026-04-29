@@ -1,24 +1,35 @@
 using Gymio.Client.Pages;
-
 using Gymio.Data;
+using Gymio.Hubs;
 using Gymio.Interfaces;
 using Gymio.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication;
+using MongoDB.Driver;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuración de SQL Server
+// configuración de SQL Server
 builder.Services.AddDbContext<GymioDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GymioSQLConnection")));
 
-// Configuración de MongoDB
+// configuración de MongoDB
+
 var mongoConnectionString = builder.Configuration.GetConnectionString("GymioMongoConnection");
-builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoConnectionString));
+
+// registramos el cliente de Mongo como Singleton (una sola conexión para toda la app)
+builder.Services.AddSingleton<IMongoClient>(new MongoClient(mongoConnectionString));
+
+// registramos la Base de Datos específica para inyectarla en los servicios
+builder.Services.AddScoped(sp =>
+{
+    var client = sp.GetRequiredService<IMongoClient>();
+    return client.GetDatabase("GymioMongoDB"); // nombre de la bd en mongo compass
+});
 
 // Servicios de negocio
 builder.Services.AddScoped<IClienteService, ClienteService>();
@@ -26,6 +37,9 @@ builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ISuscripcionService, SuscripcionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IVentaService, VentaService>();
+builder.Services.AddScoped<IRutinaService, RutinaService>();
+builder.Services.AddScoped<IChatService,ChatService >();
+builder.Services.AddSignalR();
 
 
 // =====================================================================
@@ -84,8 +98,7 @@ app.MapRazorComponents<Gymio.Components.App>()
     .AddAdditionalAssemblies(typeof(Gymio.Client._Imports).Assembly);
 
 // =====================================================================
-// 🔒 2. API DE SESIÓN (LOGIN Y LOGOUT NATIVO)
-// Este es el motor que lee el formulario HTML de Login.razor
+// 
 // =====================================================================
 app.MapPost("/api/login", async (HttpContext context, IAuthService authService) =>
 {
@@ -111,5 +124,8 @@ app.MapGet("/api/logout", async (HttpContext context) =>
     return Results.Redirect("/login");
 });
 // =====================================================================
+
+// mapeamos el hub de SignalR para la comunicación en tiempo real del chat
+app.MapHub<ChatHub>("/chathub");
 
 app.Run();

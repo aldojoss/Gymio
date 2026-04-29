@@ -19,6 +19,7 @@
             </NavLink>
         </div>
 
+
         <div class="nav-category mt-4">Operaciones</div>
 
         <div class="nav-item px-3">
@@ -52,6 +53,15 @@
                 <i class="bi bi-tags-fill me-3"></i> Catálogo de Planes
             </NavLink>
         </div>
+        <AuthorizeView Roles="Entrenador, Administrador">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="portal-entrenador">
+                        <span class="bi bi-person-video2-fill-nav-menu" aria-hidden="true">🏋️</span> Portal Entrenador
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
         <div class="nav-item px-3 text-muted opacity-50">
             <div class="nav-link rounded-3">

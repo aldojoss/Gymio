@@ -44,7 +44,7 @@ namespace Gymio.Services
                 nuevoCliente.CodigoQR += $"-{DateTime.Now.Millisecond}";
             }
 
-            // 3. Guardamos en la base de datos
+            // guardamos en la base de datos
             nuevoCliente.FechaRegistro = DateTime.Now;
             nuevoCliente.Activo = true;
 
