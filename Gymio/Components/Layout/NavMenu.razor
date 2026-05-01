@@ -5,69 +5,93 @@
         </a>
     </div>
 </div>
-
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
         
-        <div class="nav-category mt-3">General</div>
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link rounded-3" href="" Match="NavLinkMatch.All">
-                <i class="bi bi-grid-1x2-fill me-3"></i> Inicio
-            </NavLink>
-        </div>
-
-
-        <div class="nav-category mt-4">Operaciones</div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link rounded-3 pulse-access" href="acceso">
-                <i class="bi bi-qr-code-scan me-3"></i> Control de Acceso
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link rounded-3" href="suscripciones">
-                <i class="bi bi-credit-card-fill me-3"></i> Suscripciones y Pagos
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link rounded-3" href="clientes">
-                <i class="bi bi-people-fill me-3"></i> Directorio Socios
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link rounded-3" href="nuevo-cliente">
-                <i class="bi bi-person-plus-fill me-3"></i> Registrar Socio
-            </NavLink>
-        </div>
-
-        <div class="nav-category mt-4">Administración</div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link rounded-3" href="planes">
-                <i class="bi bi-tags-fill me-3"></i> Catálogo de Planes
-            </NavLink>
-        </div>
-        <AuthorizeView Roles="Entrenador, Administrador">
+        <!-- ========================================== -->
+        <!--staff
+        <!-- ========================================== -->
+        <AuthorizeView Roles="Administrador, Entrenador, Empleado">
             <Authorized>
+                <div class="nav-category mt-3">General</div>
+                
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="portal-entrenador">
-                        <span class="bi bi-person-video2-fill-nav-menu" aria-hidden="true">🏋️</span> Portal Entrenador
+                    <NavLink class="nav-link rounded-3" href="" Match="NavLinkMatch.All">
+                        <i class="bi bi-grid-1x2-fill me-3"></i> Inicio
+                    </NavLink>
+                </div>
+
+                <div class="nav-category mt-4">Operaciones</div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link rounded-3 pulse-access" href="acceso">
+                        <i class="bi bi-qr-code-scan me-3"></i> Control de Acceso
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link rounded-3" href="suscripciones">
+                        <i class="bi bi-credit-card-fill me-3"></i> Suscripciones y Pagos
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link rounded-3" href="clientes">
+                        <i class="bi bi-people-fill me-3"></i> Directorio Socios
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link rounded-3" href="nuevo-cliente">
+                        <i class="bi bi-person-plus-fill me-3"></i> Registrar Socio
+                    </NavLink>
+                </div>
+
+                <div class="nav-category mt-4">Administración</div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link rounded-3" href="planes">
+                        <i class="bi bi-tags-fill me-3"></i> Catálogo de Planes
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3 text-muted opacity-50">
+                    <div class="nav-link rounded-3">
+                        <i class="bi bi-bar-chart-line-fill me-3"></i> Reportes (Pronto)
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <!-- ========================================== -->
+        <!-- entrenadores y admin
+        <!-- ========================================== -->
+        <AuthorizeView Roles="Administrador, Entrenador">
+            <Authorized>
+                <div class="nav-item px-3 mt-2">
+                    <NavLink class="nav-link rounded-3 bg-dark border border-secondary border-opacity-25" href="portal-entrenador">
+                        <i class="bi bi-lightning-charge-fill text-warning me-3"></i> Gestión Atletas
                     </NavLink>
                 </div>
             </Authorized>
         </AuthorizeView>
 
-        <div class="nav-item px-3 text-muted opacity-50">
-            <div class="nav-link rounded-3">
-                <i class="bi bi-bar-chart-line-fill me-3"></i> Reportes (Próximamente)
-            </div>
-        </div>
+        <!-- ========================================== -->
+        <!-- cliente
+        <!-- ========================================== -->
+        <AuthorizeView Roles="Cliente">
+            <Authorized>
+                <div class="nav-category mt-3 text-primary">Portal VIP</div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link rounded-3" href="mi-portal">
+                        <i class="bi bi-phone-fill me-3"></i> Mi Entrenamiento
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
     </nav>
 </div>

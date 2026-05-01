@@ -1,6 +1,6 @@
 ﻿@page "/suscripciones"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@attribute [Authorize (Roles = "Administrador")]
 @rendermode InteractiveServer
 
 @using Gymio.Models

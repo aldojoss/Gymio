@@ -48,5 +48,44 @@ namespace Gymio.Services
 
             return true;
         }
+
+        public async Task<LoginResult> AutenticarHibridoAsync(string email, string password)
+        {
+            //buscamos el email en usuaris haber si existe
+            var usuario =  await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email && u.Activo);
+
+            if (usuario != null && BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash))
+            {
+                return new LoginResult
+                {
+                    Exito = true,
+                    Rol = usuario.Rol,
+                    Id = usuario.Id,
+                    Nombre = usuario.NombreCompleto
+                };
+
+            }
+            //si no esta en los usuarios
+
+            var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Email == email && c.Activo);
+
+            if (cliente!=null && BCrypt.Net.BCrypt.Verify(password, cliente.PasswordHash))
+            {
+                return new LoginResult
+                {
+                    Exito = true,
+                    Rol = "Cliente",
+                    Id = cliente.Id,
+                    Nombre = $"{cliente.Nombre} {cliente.Apellido}"
+                };
+            }
+
+            return new LoginResult
+            {
+                Exito = false,
+                Mensaje = "Credenciales inválidas"
+             };
+
+        }
     }
 }

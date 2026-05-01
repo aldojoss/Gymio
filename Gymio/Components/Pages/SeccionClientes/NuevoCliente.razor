@@ -1,6 +1,6 @@
 ﻿@page "/nuevo-cliente"
 
-@attribute [Authorize]
+@attribute [Authorize (Roles = "Administrador,Empleado")]
 @rendermode InteractiveServer
 @using Gymio.Models
 @using Gymio.Services

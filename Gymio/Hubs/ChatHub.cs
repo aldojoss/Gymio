@@ -4,7 +4,7 @@ namespace Gymio.Hubs
 {
     public class ChatHub : Hub
     {
-        // Ahora avisamos a todos que un chat específico cambió
+        // notificamos a un chat que cambio, para que los clientes puedan actualizar su vista
         public async Task NotificarNuevoMensaje(string chatId)
         {
             await Clients.All.SendAsync("ChatActualizado", chatId);

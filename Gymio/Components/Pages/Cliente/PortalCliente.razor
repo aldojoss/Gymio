@@ -8,6 +8,9 @@
 @inject IChatService ChatService
 @inject IClienteService ClienteService
 @inject NavigationManager Nav
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="gymio-mobile-app vh-100 d-flex flex-column text-light overflow-hidden">
     
@@ -133,14 +136,35 @@
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
 
-    private int miIdCliente = 1; //luego hare que el cliente se loguee, este es de prueba para ver esta onda
+    private int miIdCliente = 3; 
     private int idDeMiCoach = 2; 
 
     protected override async Task OnInitializedAsync()
     {
-        var clientes = await ClienteService.ObtenerClientesAsync("");
-        miPerfil = clientes.FirstOrDefault(c => c.Id == miIdCliente) ?? new Cliente { Nombre = "Socio" };
+        
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var usuarioLogueado = authState.User;
 
+        if (usuarioLogueado.Identity is not null && usuarioLogueado.Identity.IsAuthenticated)
+        {
+            
+            var claimId = usuarioLogueado.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            if (int.TryParse(claimId, out miIdCliente))
+            {
+                
+                var clientes = await ClienteService.ObtenerClientesAsync("");
+                miPerfil = clientes.FirstOrDefault(c => c.Id == miIdCliente) ?? new Cliente { Nombre = "Socio" };
+            }
+        }
+        else
+        {
+            
+            Nav.NavigateTo("/login");
+            return; 
+        }
+
+        
         hubConnection = new HubConnectionBuilder()
             .WithUrl(Nav.ToAbsoluteUri("/chathub"))
             .Build();
@@ -156,7 +180,7 @@
 
         await hubConnection.StartAsync();
         
-        // cargar datos después de conectar para evitar bloqueos
+        
         chatActual = await ChatService.ObtenerOCrearChatAsync(miIdCliente, idDeMiCoach);
     }
 
@@ -164,7 +188,9 @@
     {
         if (!string.IsNullOrWhiteSpace(nuevoMensajeTexto))
         {
-            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Cliente", RemitenteId = miIdCliente };
+            //primero lo guaradmos en la base de datos, y luego notificamos con HubConnection par actualizar la lista
+            // de mensaje mayfren
+            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Cliente", RemitenteId = miIdCliente, FechaEnvio = DateTime.Now };
             await ChatService.EnviarMensajeAsync(chatActual.Id!, msg);
             
             if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)

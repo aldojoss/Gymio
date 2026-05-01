@@ -26,7 +26,8 @@ namespace Gymio.Models
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
         public bool Activo { get; set; } = true;
         public string? FotoUrl { get; set; }
-        public int? EntrenadorId { get; set; } 
+        public string? PasswordHash { get; set; }
+
 
         // establecemos las relaciones, un cliente puede tener muchas suscripciones y asistencias
         public ICollection<SuscripcionCliente> Suscripciones { get; set; }

@@ -6,6 +6,7 @@ using Gymio.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using MongoDB.Driver;
@@ -88,7 +89,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();
 
-// Activar el Guardián HTTP
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -100,32 +101,32 @@ app.MapRazorComponents<Gymio.Components.App>()
 // =====================================================================
 // 
 // =====================================================================
-app.MapPost("/api/login", async (HttpContext context, IAuthService authService) =>
+app.MapPost("/api/login", async ([FromForm] string email, [FromForm] string password, Gymio.Interfaces.IAuthService authService, HttpContext context) =>
 {
-    var email = context.Request.Form["email"].ToString();
-    var password = context.Request.Form["password"].ToString();
+    var resultado = await authService.AutenticarHibridoAsync(email, password);
 
-    var usuario = await authService.LoginAsync(email, password);
-    if (usuario == null) return Results.Redirect("/login?error=Credenciales incorrectas");
+    if (resultado.Exito)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, resultado.Nombre!),
+            new Claim(ClaimTypes.NameIdentifier, resultado.Id.ToString()),
+            new Claim(ClaimTypes.Role, resultado.Rol!)
+        };
 
-    var claims = new List<Claim> {
-        new Claim(ClaimTypes.Name, usuario.NombreCompleto),
-        new Claim(ClaimTypes.Role, usuario.Rol ?? "Empleado")
-    };
-    var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-    await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
-    return Results.Redirect("/");
+        return Results.Redirect(resultado.Rol == "Cliente" ? "/mi-portal" : "/");
+    }
+
+    return Results.Redirect("/login?error=Credenciales incorrectas");
 }).DisableAntiforgery();
-
-app.MapGet("/api/logout", async (HttpContext context) =>
-{
-    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Redirect("/login");
-});
 // =====================================================================
 
 // mapeamos el hub de SignalR para la comunicación en tiempo real del chat
 app.MapHub<ChatHub>("/chathub");
+
+
 
 app.Run();
