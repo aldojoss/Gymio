@@ -1,16 +1,18 @@
 ﻿@page "/mi-portal"
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize(Roles = "Cliente")]
 @implements IAsyncDisposable
 
 @using Gymio.Models
 @using Gymio.Interfaces
 @using Microsoft.AspNetCore.SignalR.Client
-@inject IChatService ChatService
-@inject IClienteService ClienteService
-@inject NavigationManager Nav
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+
+@inject IChatService ChatService
+@inject IClienteService ClienteService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 
 <div class="gymio-mobile-app vh-100 d-flex flex-column text-light overflow-hidden">
     
@@ -38,6 +40,16 @@
     </div>
 
     <div class="app-body flex-grow-1 position-relative overflow-auto p-3 custom-scrollbar" style="height: 0; background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 20px 20px;">
+        
+        @if (!string.IsNullOrEmpty(mensajeError))
+        {
+            @* este es el aviso por si algo sale mal asi no se congela la pantalla *@
+            <div class="alert alert-warning m-3 text-center shadow-sm rounded-4 border-warning border-opacity-50" style="background-color: rgba(255, 193, 7, 0.1);">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-1 mb-2 d-block"></i>
+                <p class="text-white mb-0">@mensajeError</p>
+            </div>
+        }
+
         @if (tabActual == "rutina")
         {
             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center fade-in">
@@ -57,24 +69,27 @@
                     </span>
                 </div>
 
-                @foreach (var msg in chatActual.Historial)
+                @if (chatActual?.Historial != null)
                 {
-                    bool soyYo = msg.RolRemitente == "Cliente";
-                    <div class="d-flex w-100 @(soyYo ? "justify-content-end" : "justify-content-start") slide-up">
-                        <div class="p-3 shadow-md msg-bubble @(soyYo ? "mi-bubble" : "coach-bubble")">
-                            <div style="line-height: 1.4;">@msg.Texto</div>
-                            <div class="msg-meta text-end mt-1 d-flex justify-content-end align-items-center gap-1">
-                                @msg.FechaEnvio.ToString("h:mm tt")
-                                @if (soyYo) { <i class="bi bi-check2-all text-white-50"></i> }
+                    @foreach (var msg in chatActual.Historial)
+                    {
+                        bool soyYo = msg.RolRemitente == "Cliente";
+                        <div class="d-flex w-100 @(soyYo ? "justify-content-end" : "justify-content-start") slide-up">
+                            <div class="p-3 shadow-md msg-bubble @(soyYo ? "mi-bubble" : "coach-bubble")">
+                                <div style="line-height: 1.4;">@msg.Texto</div>
+                                <div class="msg-meta text-end mt-1 d-flex justify-content-end align-items-center gap-1">
+                                    @msg.FechaEnvio.ToString("h:mm tt")
+                                    @if (soyYo) { <i class="bi bi-check2-all text-white-50"></i> }
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    }
                 }
             </div>
         }
     </div>
 
-    @if (tabActual == "chat")
+    @if (tabActual == "chat" && string.IsNullOrEmpty(mensajeError))
     {
         <div class="chat-input-wrapper p-3 sticky-bottom slide-up z-3">
             <div class="input-group shadow-lg rounded-pill p-1 bg-dark border border-secondary border-opacity-50" style="backdrop-filter: blur(10px);">
@@ -89,88 +104,90 @@
 </div>
 
 <style>
-    /* TEMA CYBER-MINT PARA MÓVIL */
-.gymio-mobile-app { background-color: #040508; font-family: 'Segoe UI', Roboto, sans-serif; }
-.bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #000 !important; }
-.text-primary { color: #00FFA3 !important; }
-
-/* HEADER CON DESENFOQUE */
-.mobile-header { background: rgba(8, 10, 15, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0, 255, 163, 0.1); }
-
-/* BOTONES DE NAVEGACIÓN MÓVIL */
-.nav-btn { border: none; font-size: 0.85rem; }
-.nav-active { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; font-weight: 700 !important; box-shadow: 0 4px 15px rgba(0, 255, 163, 0.25); }
-.nav-inactive { background: rgba(255,255,255,0.03); color: #6c757d; border: 1px solid rgba(255,255,255,0.05); }
-
-/* CHAT BUBBLES INVERTIDAS PARA EL CLIENTE */
-.msg-bubble { max-width: 85%; font-size: 0.95rem; }
-/* Mi burbuja (Cliente enviando) -> Menta/Cyan */
-.mi-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; font-weight: 500; border-radius: 1.2rem 1.2rem 0 1.2rem; box-shadow: 0 4px 15px rgba(0, 255, 163, 0.2); }
-/* Burbuja del Coach recibida -> Gris espacial */
-.coach-bubble { background: #12151f; color: #e0e4f5; border-radius: 1.2rem 1.2rem 1.2rem 0; border: 1px solid #1f2538; }
-.msg-meta { font-size: 0.7rem; opacity: 0.8; }
-
-/* ANIMACIONES Y EXTRAS */
-.fade-in { animation: fadeIn 0.4s ease-in-out; }
-.slide-up { animation: slideUp 0.3s ease-out; }
-@@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.transition-all { transition: all 0.3s ease; }
-.tracking-widest { letter-spacing: 0.15em; }
-
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 255, 163, 0.2); border-radius: 10px; }
-
-/* SOMBRA DEL INPUT INFERIOR */
-.chat-input-wrapper { background: linear-gradient(0deg, #040508 30%, rgba(4,5,8,0) 100%); padding-top: 2rem !important; }
-
-/* MODIFICADOR DEL BOTÓN ENVIAR PARA EL TEMA */
-.btn-success { background-color: #00FFA3 !important; border-color: #00FFA3 !important; color: #000 !important; }
-.btn-success:hover { background-color: #00e693 !important; }
+    /* tus estilos cyber mint se quedan igual mayfren */
+    .gymio-mobile-app { background-color: #040508; font-family: 'Segoe UI', Roboto, sans-serif; }
+    .bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #000 !important; }
+    .text-primary { color: #00FFA3 !important; }
+    .mobile-header { background: rgba(8, 10, 15, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0, 255, 163, 0.1); }
+    .nav-btn { border: none; font-size: 0.85rem; }
+    .nav-active { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; font-weight: 700 !important; box-shadow: 0 4px 15px rgba(0, 255, 163, 0.25); }
+    .nav-inactive { background: rgba(255,255,255,0.03); color: #6c757d; border: 1px solid rgba(255,255,255,0.05); }
+    .msg-bubble { max-width: 85%; font-size: 0.95rem; }
+    .mi-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; font-weight: 500; border-radius: 1.2rem 1.2rem 0 1.2rem; box-shadow: 0 4px 15px rgba(0, 255, 163, 0.2); }
+    .coach-bubble { background: #12151f; color: #e0e4f5; border-radius: 1.2rem 1.2rem 1.2rem 0; border: 1px solid #1f2538; }
+    .msg-meta { font-size: 0.7rem; opacity: 0.8; }
+    .fade-in { animation: fadeIn 0.4s ease-in-out; }
+    .slide-up { animation: slideUp 0.3s ease-out; }
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .btn-success { background-color: #00FFA3 !important; border-color: #00FFA3 !important; color: #000 !important; }
 </style>
 
 @code {
     private string tabActual = "chat";
     private Cliente miPerfil = new Cliente { Nombre = "Cargando..." };
-    private ChatEntrenador chatActual = new();
+    private ChatEntrenador chatActual = new ChatEntrenador { Historial = new List<Mensaje>() };
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
+    private string mensajeError = "";
 
-    private int miIdCliente = 3; 
-    private int idDeMiCoach = 2; 
+    private int miIdCliente; 
+    private int idDeMiCoach; 
 
     protected override async Task OnInitializedAsync()
     {
-        
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var usuarioLogueado = authState.User;
-
-        if (usuarioLogueado.Identity is not null && usuarioLogueado.Identity.IsAuthenticated)
+        try 
         {
-            
-            var claimId = usuarioLogueado.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            
-            if (int.TryParse(claimId, out miIdCliente))
+            @* primero sacamos el usuario que inicio sesion *@
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var usuarioLogueado = authState.User;
+
+            if (usuarioLogueado.Identity is not null && usuarioLogueado.Identity.IsAuthenticated)
             {
+                var claimId = usuarioLogueado.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 
-                var clientes = await ClienteService.ObtenerClientesAsync("");
-                miPerfil = clientes.FirstOrDefault(c => c.Id == miIdCliente) ?? new Cliente { Nombre = "Socio" };
+                if (int.TryParse(claimId, out miIdCliente))
+                {
+                    @* cargamos los datos del cliente desde tu servicio *@
+                    var clientes = await ClienteService.ObtenerClientesAsync("");
+                    miPerfil = clientes.FirstOrDefault(c => c.Id == miIdCliente) ?? new Cliente { Nombre = "Socio" };
+
+                    @* buscamos el coach asignado o el admin por defecto si la tabla esta vacia *@
+                    idDeMiCoach = await ClienteService.ObtenerIdEntrenadorAsignadoAsync(miIdCliente);
+                    
+                    @* levantamos signalr y el chat de una vez *@
+                    await PrepararChatYSignalR();
+                }
+            }
+            else
+            {
+                @* si no esta logueado lo mandamos a volar al login *@
+                Nav.NavigateTo("/login");
             }
         }
-        else
+        catch (Exception ex)
         {
-            
-            Nav.NavigateTo("/login");
-            return; 
+            @* cpaturartheerror *@
+            mensajeError = "estamos terminando de configurar tu perfil vuelve a intentar en un momento";
+            Console.WriteLine($"error en el portal cliente {ex.Message}");
         }
+    }
 
+    private async Task PrepararChatYSignalR()
+    {
+        @* cargamos el historial desde mongo usando tu servicio de chat *@
+        chatActual = await ChatService.ObtenerOCrearChatAsync(miIdCliente, idDeMiCoach);
         
+        @* inicializamos la lista por si mongo devolvio algo vacio asi no da error el foreach *@
+        if (chatActual.Historial == null) chatActual.Historial = new List<Mensaje>();
+
         hubConnection = new HubConnectionBuilder()
             .WithUrl(Nav.ToAbsoluteUri("/chathub"))
             .Build();
 
         hubConnection.On<string>("ChatActualizado", async (chatId) =>
         {
+            @* si alguien mas escribe actualizamos la lista en tiempo real *@
             if (chatActual != null && chatActual.Id == chatId)
             {
                 chatActual = await ChatService.ObtenerOCrearChatAsync(miIdCliente, idDeMiCoach);
@@ -179,18 +196,21 @@
         });
 
         await hubConnection.StartAsync();
-        
-        
-        chatActual = await ChatService.ObtenerOCrearChatAsync(miIdCliente, idDeMiCoach);
     }
 
     private async Task EnviarMensaje()
     {
-        if (!string.IsNullOrWhiteSpace(nuevoMensajeTexto))
+        if (!string.IsNullOrWhiteSpace(nuevoMensajeTexto) && chatActual != null)
         {
-            //primero lo guaradmos en la base de datos, y luego notificamos con HubConnection par actualizar la lista
-            // de mensaje mayfren
-            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Cliente", RemitenteId = miIdCliente, FechaEnvio = DateTime.Now };
+            @* creamos el objeto mensaje con tus datos reales *@
+            var msg = new Mensaje { 
+                Texto = nuevoMensajeTexto, 
+                RolRemitente = "Cliente", 
+                RemitenteId = miIdCliente, 
+                FechaEnvio = DateTime.Now 
+            };
+
+            @* guardamos en mongo y avisamos por signalr *@
             await ChatService.EnviarMensajeAsync(chatActual.Id!, msg);
             
             if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
@@ -198,6 +218,7 @@
                 await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
             }
 
+            @* actualizamos la interfaz local para que se vea al instante *@
             chatActual.Historial.Add(msg);
             nuevoMensajeTexto = "";
         }
@@ -205,6 +226,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        @* cerramos la radio al salir de la pagina para no gastar recursos *@
         if (hubConnection is not null)
         {
             await hubConnection.DisposeAsync();

@@ -10,12 +10,18 @@ namespace Gymio.Interfaces
 
         
         Task<Cliente?> ObtenerClientePorQRAsync(string codigoQR);
+        Task<List<Cliente>> ObtenerClientesPorEntrenadorAsync(int entrenadorId);
         Task<bool> RegistrarAsistenciaAsync(int clienteId, bool accesoPermitido);
 
         Task<int> CargarCantidadClientes();
         Task<decimal> CantidadIngresosHoy();
         Task<bool> ActualizarClienteAsync(Cliente cliente);
-       
+
+        Task<int> ObtenerIdEntrenadorAsignadoAsync(int clienteId);
+        Task<bool> AsignarEntrenadorAsync(int clienteId, int entrenadorId);
+        Task<List<Usuario>> ObtenerEntrenadoresAsync();
+        Task<List<Cliente>> BuscarClientesParaSuscripcionAsync(string termino);
+
 
 
     }

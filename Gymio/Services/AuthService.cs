@@ -3,15 +3,18 @@ using Gymio.Data;
 using Gymio.Models;
 using Gymio.Interfaces;
 
+
 namespace Gymio.Services
 {
     public class AuthService : IAuthService
     {
         private readonly GymioDbContext _context;
+        private readonly IClienteService _clienteService;
 
-        public AuthService(GymioDbContext context)
+        public AuthService(GymioDbContext context, IClienteService clienteService)
         {
             _context = context;
+            this._clienteService = clienteService;
         }
 
         public async Task<Usuario?> LoginAsync(string email, string passwordPlana)
@@ -33,13 +36,21 @@ namespace Gymio.Services
 
         public async Task<bool> CrearUsuarioFuerteAsync(Usuario nuevoUsuario, string passwordPlana)
         {
-            // verificamos que el correo no esté duplicado
-            if (await _context.Usuarios.AnyAsync(u => u.Email == nuevoUsuario.Email))
+            string correoLimpio = nuevoUsuario.Email.Trim().ToLower();
+            nuevoUsuario.Email = correoLimpio;
+
+            bool existeEnUsuarios = await _context.Usuarios.AnyAsync(u => u.Email == correoLimpio);
+
+            var todosLosClientes = await _clienteService.ObtenerClientesAsync();
+            bool existeEnClientes = todosLosClientes.Any(c => c.Email != null && c.Email.Trim().ToLower() == correoLimpio);
+
+   
+            if (existeEnUsuarios || existeEnClientes)
             {
                 return false;
             }
 
-            // generamosel hash de la contraseña usando la biblioteca BCrypt.Net-Next
+         
             nuevoUsuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordPlana);
             nuevoUsuario.Activo = true;
 
@@ -49,43 +60,47 @@ namespace Gymio.Services
             return true;
         }
 
-        public async Task<LoginResult> AutenticarHibridoAsync(string email, string password)
+        public async Task<LoginResult> AutenticarHibridoAsync(string email, string password, string tipoAcceso)
         {
-            //buscamos el email en usuaris haber si existe
-            var usuario =  await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email && u.Activo);
-
-            if (usuario != null && BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash))
+           
+            if (tipoAcceso == "Staff")
             {
-                return new LoginResult
+                var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email && u.Activo);
+
+                if (usuario != null && BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash))
                 {
-                    Exito = true,
-                    Rol = usuario.Rol,
-                    Id = usuario.Id,
-                    Nombre = usuario.NombreCompleto
-                };
-
+                    return new LoginResult
+                    {
+                        Exito = true,
+                        Rol = usuario.Rol,
+                        Id = usuario.Id,
+                        Nombre = usuario.NombreCompleto
+                    };
+                }
             }
-            //si no esta en los usuarios
-
-            var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Email == email && c.Activo);
-
-            if (cliente!=null && BCrypt.Net.BCrypt.Verify(password, cliente.PasswordHash))
+    
+            else if (tipoAcceso == "Socio")
             {
-                return new LoginResult
+                var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Email == email && c.Activo);
+
+                if (cliente != null && BCrypt.Net.BCrypt.Verify(password, cliente.PasswordHash))
                 {
-                    Exito = true,
-                    Rol = "Cliente",
-                    Id = cliente.Id,
-                    Nombre = $"{cliente.Nombre} {cliente.Apellido}"
-                };
+                    return new LoginResult
+                    {
+                        Exito = true,
+                        Rol = "Cliente",
+                        Id = cliente.Id,
+                        Nombre = $"{cliente.Nombre} {cliente.Apellido}"
+                    };
+                }
             }
 
+            
             return new LoginResult
             {
                 Exito = false,
-                Mensaje = "Credenciales inválidas"
-             };
-
+                Mensaje = "Credenciales inválidas o tipo de cuenta incorrecto"
+            };
         }
     }
 }

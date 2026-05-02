@@ -14,7 +14,7 @@ namespace Gymio.Models
             [ForeignKey("UsuarioId")]
             public Usuario Cajero { get; set; }
 
-            // Puede ser nulo porque podrías vender un agua a alguien sin registrarlo como cliente
+            // puede ser nulo 
             public int? ClienteId { get; set; }
             [ForeignKey("ClienteId")]
             public Cliente Cliente { get; set; }

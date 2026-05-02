@@ -10,6 +10,6 @@ namespace Gymio.Interfaces
 
         // hashea la contraseña antes de guardar al empleado en la base de datos
         Task<bool> CrearUsuarioFuerteAsync(Usuario nuevoUsuario, string passwordPlana);
-        Task<LoginResult> AutenticarHibridoAsync(string email, string password);
+        Task<LoginResult> AutenticarHibridoAsync(string email, string password,string tipoAcceso);
     }
 }

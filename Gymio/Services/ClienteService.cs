@@ -29,6 +29,15 @@ namespace Gymio.Services
 
         public async Task<bool> RegistrarClienteAsync(Cliente nuevoCliente)
         {
+
+            bool existeEnClientes = await _context.Clientes.AnyAsync(c => c.Email == nuevoCliente.Email);
+            bool existeEnUsuarios = await _context.Usuarios.AnyAsync(u => u.Email == nuevoCliente.Email);
+
+            if (existeEnClientes || existeEnUsuarios)
+            {
+                // Aquí podrías lanzar una excepción o retornar false para mostrar error en la UI
+                return false;
+            }
             // 1el codigo generamos uno unico para evitar errores al 100*100
             // Formato: GYM-AÑO-MES-DIA-5LetrasAleatorias
             string fecha = DateTime.Now.ToString("yyyyMMdd");
@@ -101,6 +110,73 @@ namespace Gymio.Services
             _context.Entry(clienteTrackeado).CurrentValues.SetValues(cliente);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+
+        public async Task<int> ObtenerIdEntrenadorAsignadoAsync(int clienteId)
+        {
+            var asignacion = await _context.AsignacionesEntrenadores
+                .FirstOrDefaultAsync(a => a.ClienteId == clienteId);
+
+            
+            return asignacion != null ? asignacion.EntrenadorId : 2;
+        }
+
+        public async Task<bool> AsignarEntrenadorAsync(int clienteId, int entrenadorId)
+        {
+            
+            var asignacionExistente = await _context.AsignacionesEntrenadores
+                .FirstOrDefaultAsync(a => a.ClienteId == clienteId);
+
+            if (asignacionExistente != null)
+            {
+              
+                asignacionExistente.EntrenadorId = entrenadorId;
+                asignacionExistente.FechaAsignacion = DateTime.Now;
+                _context.AsignacionesEntrenadores.Update(asignacionExistente);
+            }
+            else
+            {
+              
+                var nuevaAsignacion = new AsignacionEntrenador
+                {
+                    ClienteId = clienteId,
+                    EntrenadorId = entrenadorId,
+                    FechaAsignacion = DateTime.Now
+                };
+                _context.AsignacionesEntrenadores.Add(nuevaAsignacion);
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<List<Usuario>> ObtenerEntrenadoresAsync()
+        {
+            return await _context.Usuarios.Where(e => e.Rol=="Entrenador").ToListAsync();
+        }
+
+        public async Task<List<Cliente>> BuscarClientesParaSuscripcionAsync(string termino)
+        {
+            if (string.IsNullOrWhiteSpace(termino))
+                return new List<Cliente>();
+
+            return await _context.Clientes
+                .Where(c => c.Nombre.Contains(termino) || c.Apellido.Contains(termino))
+                .Take(5) 
+                .ToListAsync();
+        }
+
+        public async Task<List<Cliente>> ObtenerClientesPorEntrenadorAsync(int entrenadorId)
+        {
+            
+            var asignaciones = await _context.AsignacionesEntrenadores
+                .Include(a => a.Cliente) 
+                .Where(a => a.EntrenadorId == entrenadorId)
+                .ToListAsync();
+
+            
+            return asignaciones.Select(a => a.Cliente).ToList();
         }
     }
 }

@@ -6,112 +6,233 @@
 @using Gymio.Models
 @using Gymio.Interfaces
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inject IChatService ChatService
 @inject IClienteService ClienteService
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
-<div class="gymio-admin-container vh-100 d-flex text-light overflow-hidden">
+<div class="gymio-admin-container d-flex text-light overflow-hidden">
     
+    @* PANEL LATERAL: MIS ATLETAS (Agrandado para no sentirse achicado) *@
     <div class="sidebar glass-panel d-flex flex-column border-end border-secondary border-opacity-25 shadow-lg">
-        <div class="p-4 border-bottom border-secondary border-opacity-25">
+        <div class="p-4 border-bottom border-secondary border-opacity-25 d-flex align-items-center">
             <h5 class="fw-black text-uppercase tracking-widest text-primary mb-0 flex-grow-1">
                 <i class="bi bi-lightning-charge-fill me-2"></i>Mis Atletas
             </h5>
         </div>
         
         <div class="client-list overflow-auto p-3 flex-grow-1 custom-scrollbar">
-            @foreach (var cliente in misClientes)
+            @if (misClientes == null)
             {
-                bool isActive = clienteSeleccionado?.Id == cliente.Id;
-                <div class="client-card p-3 mb-2 rounded-4 transition-all @(isActive ? "active-client shadow-lg" : "hover-client")"
-                     @onclick="() => SeleccionarCliente(cliente)">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar bg-gradient-primary text-white d-flex justify-content-center align-items-center rounded-circle fw-bold shadow-sm" style="width: 45px; height: 45px;">
-                            @(cliente.Nombre.Substring(0,1))@(cliente.Apellido.Substring(0,1))
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 fw-bold @(isActive ? "text-white" : "text-light")">@cliente.Nombre @cliente.Apellido</h6>
-                            <small class="text-white-50 d-flex align-items-center gap-1" style="font-size: 0.75rem;">
-                                <i class="bi bi-upc-scan"></i> @cliente.CodigoQR
-                            </small>
-                        </div>
-                        @if(isActive) { <i class="bi bi-chevron-right text-primary"></i> }
+                <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+            }
+            else if (!misClientes.Any())
+            {
+                <div class="text-center mt-5 fade-in">
+                    <div class="bg-dark rounded-circle p-4 d-inline-block mb-3 border border-secondary border-opacity-25 shadow">
+                        <i class="bi bi-person-slash display-5 text-white-50"></i>
                     </div>
+                    <h5 class="fw-bold text-white mb-2 tracking-wide">Sin atletas</h5>
+                    <p class="text-muted small px-3">No tienes socios asignados a tu cargo aún.</p>
                 </div>
+            }
+            else
+            {
+                @foreach (var cliente in misClientes)
+                {
+                    bool isActive = clienteSeleccionado?.Id == cliente.Id;
+                    <div class="client-card p-3 mb-3 rounded-4 transition-all @(isActive ? "active-client shadow-lg" : "hover-client")"
+                         @onclick="() => SeleccionarCliente(cliente)">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="avatar bg-gradient-primary text-dark d-flex justify-content-center align-items-center rounded-circle fw-black shadow-sm" style="width: 50px; height: 50px; font-size: 1.1rem;">
+                                @(cliente.Nombre.Substring(0,1).ToUpper())@(cliente.Apellido.Substring(0,1).ToUpper())
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold tracking-wide @(isActive ? "text-white" : "text-light")">@cliente.Nombre @cliente.Apellido</h6>
+                                <small class="text-white-50 d-flex align-items-center gap-1 font-monospace" style="font-size: 0.75rem;">
+                                    <i class="bi bi-upc-scan"></i> @cliente.CodigoQR
+                                </small>
+                            </div>
+                            @if(isActive) { <i class="bi bi-chevron-right text-primary fs-5"></i> }
+                        </div>
+                    </div>
+                }
             }
         </div>
     </div>
 
-    <div class="workspace flex-grow-1 d-flex flex-column bg-dark">
+    @* ÁREA DE TRABAJO PRINCIPAL (Expandida) *@
+    <div class="workspace flex-grow-1 d-flex flex-column bg-dark position-relative">
         @if (clienteSeleccionado == null)
         {
-            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-white-50 fade-in">
-                <div class="glass-icon-wrapper mb-4 rounded-circle d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);">
-                    <i class="bi bi-person-lines-fill display-3 text-primary"></i>
+            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-white-50 fade-in position-relative z-1">
+                <div class="glass-icon-wrapper mb-4 rounded-circle d-flex align-items-center justify-content-center border border-secondary border-opacity-25 shadow-lg" style="width: 140px; height: 140px; background: rgba(15, 20, 30, 0.6); backdrop-filter: blur(10px);">
+                    <i class="bi bi-person-bounding-box display-2 text-primary opacity-75"></i>
                 </div>
-                <h3 class="fw-light tracking-wide">Selecciona un atleta para comenzar</h3>
-                <p class="opacity-50">Visualiza métricas, edita rutinas y comunícate en vivo.</p>
+                <h2 class="fw-bold tracking-wide text-white mb-2">Selecciona un atleta</h2>
+                <p class="opacity-75 fs-5">Visualiza métricas, edita rutinas y comunícate en vivo.</p>
             </div>
         }
         else
         {
-            <div class="workspace-header p-4 glass-panel border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center fade-in">
-                <div>
-                    <h2 class="fw-black mb-0 text-white">@clienteSeleccionado.Nombre @clienteSeleccionado.Apellido</h2>
-                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-3 mt-1">
-                        <i class="bi bi-circle-fill small me-1" style="font-size: 0.5rem;"></i> Modo Coaching Activo
-                    </span>
+            <div class="workspace-header p-4 glass-panel border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center fade-in z-2">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-header bg-dark border border-primary border-opacity-50 text-primary d-flex justify-content-center align-items-center rounded-circle fw-black shadow-sm" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                        @(clienteSeleccionado.Nombre.Substring(0,1).ToUpper())@(clienteSeleccionado.Apellido.Substring(0,1).ToUpper())
+                    </div>
+                    <div>
+                        <h2 class="fw-black mb-0 text-white tracking-wide">@clienteSeleccionado.Nombre @clienteSeleccionado.Apellido</h2>
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-3 mt-2 py-1 tracking-widest text-uppercase">
+                            <i class="bi bi-circle-fill small me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Coaching Activo
+                        </span>
+                    </div>
                 </div>
                 
-                <div class="ios-tabs d-flex p-1 rounded-pill" style="background: rgba(0,0,0,0.3);">
-                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold @(tabActual == "rutina" ? "bg-primary text-white shadow" : "text-white-50")" @onclick='() => tabActual = "rutina"'>📋 Rutina</button>
-                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold @(tabActual == "progreso" ? "bg-primary text-white shadow" : "text-white-50")" @onclick='() => tabActual = "progreso"'>📈 Métricas</button>
-                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold @(tabActual == "chat" ? "bg-primary text-white shadow" : "text-white-50")" @onclick='() => tabActual = "chat"'>💬 VIP Chat</button>
+                <div class="ios-tabs d-flex p-1 rounded-pill border border-secondary border-opacity-25" style="background: rgba(0,0,0,0.4);">
+                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold tracking-wide @(tabActual == "rutina" ? "bg-primary text-dark shadow" : "text-white-50 hover-text-white")" @onclick='() => tabActual = "rutina"'>📋 Rutina</button>
+                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold tracking-wide @(tabActual == "progreso" ? "bg-primary text-dark shadow" : "text-white-50 hover-text-white")" @onclick='() => tabActual = "progreso"'>📈 Métricas</button>
+                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold tracking-wide @(tabActual == "chat" ? "bg-primary text-dark shadow" : "text-white-50 hover-text-white")" @onclick='() => tabActual = "chat"'>💬 VIP Chat</button>
                 </div>
             </div>
 
-            <div class="p-4 flex-grow-1 d-flex flex-column overflow-hidden position-relative" style="background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px); background-size: 30px 30px;">
-                @if (tabActual == "chat")
+            <div class="p-4 flex-grow-1 d-flex flex-column overflow-hidden position-relative z-1" style="background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px;">
+                
+                @* ========================================== *@
+                @* TAB: CREADOR DE RUTINAS *@
+                @* ========================================== *@
+                @if (tabActual == "rutina")
+                {
+                    <div class="row h-100 g-4 fade-in">
+                        @* Formulario para asignar bloque de ejercicios *@
+                        <div class="col-12 col-xl-5 h-100 d-flex flex-column">
+                            <div class="card glass-panel border-secondary border-opacity-25 rounded-4 h-100 overflow-hidden d-flex flex-column shadow-lg">
+                                <div class="card-header border-bottom border-secondary border-opacity-25 p-4 bg-transparent">
+                                    <h5 class="fw-bold text-white mb-0 tracking-wide"><i class="bi bi-plus-circle text-primary me-2"></i>Asignar Ejercicio</h5>
+                                </div>
+                                <div class="card-body p-4 overflow-auto custom-scrollbar flex-grow-1">
+                                    
+                                    <div class="mb-4">
+                                        <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Día / Músculo</label>
+                                        <select class="form-select form-select-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6">
+                                            <option value="Pierna">Día de Pierna (Cuádriceps/Glúteo)</option>
+                                            <option value="Empuje">Pecho / Hombro / Tríceps</option>
+                                            <option value="Jalon">Espalda / Bíceps</option>
+                                            <option value="Fullbody">Cuerpo Completo</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Ejercicio</label>
+                                        <input type="text" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: Pushdowns en polea recta..." />
+                                    </div>
+
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-6">
+                                            <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Series</label>
+                                            <input type="number" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 4" />
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Reps Objetivo</label>
+                                            <input type="text" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 8 - 12" />
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-5">
+                                        <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Instrucciones Técnicas</label>
+                                        <textarea class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none" rows="4" placeholder="Ej: Hacer 1 Top Set pesado. Las otras 3 series efectivas bajarle al peso y buscar el fallo..."></textarea>
+                                    </div>
+
+                                    <button class="btn btn-gradient-primary w-100 fw-bold py-3 fs-5 rounded-3 shadow mt-auto tracking-wide">
+                                        Agregar al Plan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Vista previa de la rutina armada *@
+                        <div class="col-12 col-xl-7 h-100">
+                            <div class="card bg-dark border-secondary border-opacity-25 rounded-4 h-100 d-flex flex-column shadow-lg">
+                                <div class="card-header border-bottom border-secondary border-opacity-25 p-4 bg-transparent d-flex justify-content-between align-items-center">
+                                    <h5 class="fw-bold text-white mb-0 tracking-wide">Plan Actual: <span class="text-primary">Día de Pierna</span></h5>
+                                    <button class="btn btn-outline-primary rounded-pill fw-bold px-4">Guardar Cambios</button>
+                                </div>
+                                <div class="card-body p-4 overflow-auto custom-scrollbar">
+                                    
+                                    @* Elemento de lista simulado *@
+                                    <div class="bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded-4 p-4 mb-3 d-flex justify-content-between align-items-center transition-hover">
+                                        <div>
+                                            <h5 class="text-white fw-bold mb-2">1. Sentadilla Libre (Barra baja)</h5>
+                                            <div class="d-flex gap-4 text-primary fw-bold font-monospace mb-2">
+                                                <span><i class="bi bi-layers me-2"></i>4 Series</span>
+                                                <span><i class="bi bi-arrow-repeat me-2"></i>8-10 Reps</span>
+                                            </div>
+                                            <p class="text-muted small mt-2 mb-0 border-start border-primary ps-3">Enfocate en romper la paralela. Descanso 3 min.</p>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-dark border border-secondary border-opacity-25 text-white-50 hover-white p-2 rounded-3"><i class="bi bi-pencil fs-5"></i></button>
+                                            <button class="btn btn-dark border border-danger border-opacity-25 text-danger hover-white p-2 rounded-3"><i class="bi bi-trash fs-5"></i></button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* ========================================== *@
+                @* TAB: CHAT *@
+                @* ========================================== *@
+                else if (tabActual == "chat")
                 {
                     <div class="chat-box d-flex flex-column h-100 glass-panel rounded-4 shadow-lg border border-secondary border-opacity-25 fade-in">
-                        
-                       <div class="messages-area flex-grow-1 p-4 overflow-auto custom-scrollbar" style="height: 0;">
+                        <div class="messages-area flex-grow-1 p-4 overflow-auto custom-scrollbar" style="height: 0;">
                             @if (!chatActual.Historial.Any())
                             {
-                                <div class="text-center mt-5"><span class="badge bg-dark px-4 py-2 rounded-pill text-white-50">Inicio del historial cifrado</span></div>
+                                <div class="text-center mt-5"><span class="badge bg-dark border border-secondary border-opacity-25 px-4 py-2 rounded-pill text-white-50 tracking-widest text-uppercase">Inicio del historial cifrado</span></div>
                             }
                             
                             @foreach (var msg in chatActual.Historial)
                             {
                                 bool esEntrenador = msg.RolRemitente == "Entrenador";
-                                <div class="d-flex w-100 mb-3 @(esEntrenador ? "justify-content-end" : "justify-content-start") slide-up">
-                                    <div class="msg-bubble p-3 shadow-sm @(esEntrenador ? "entrenador-bubble" : "cliente-bubble")">
-                                        <div style="line-height: 1.4;">@msg.Texto</div>
-                                        <div class="msg-meta text-end mt-1 d-flex justify-content-end align-items-center gap-1">
+                                <div class="d-flex w-100 mb-4 @(esEntrenador ? "justify-content-end" : "justify-content-start") slide-up">
+                                    <div class="msg-bubble p-3 shadow @(esEntrenador ? "entrenador-bubble" : "cliente-bubble")">
+                                        <div style="line-height: 1.5; font-size: 1.05rem;">@msg.Texto</div>
+                                        <div class="msg-meta text-end mt-2 d-flex justify-content-end align-items-center gap-1 font-monospace">
                                             @msg.FechaEnvio.ToString("h:mm tt")
-                                            @if (esEntrenador) { <i class="bi bi-check2-all text-white-50"></i> }
+                                            @if (esEntrenador) { <i class="bi bi-check2-all ms-1" style="color: rgba(0,0,0,0.5); font-size: 1.1rem;"></i> }
                                         </div>
                                     </div>
                                 </div>
                             }
                         </div>
 
-                        <div class="input-area p-3 border-top border-secondary border-opacity-25" style="background: rgba(0,0,0,0.2);">
-                            <div class="input-group shadow-lg rounded-pill p-1 bg-dark border border-secondary border-opacity-50">
-                                <input type="text" class="form-control bg-transparent border-0 text-white shadow-none px-4" 
-                                       placeholder="Escribe una indicación para @clienteSeleccionado.Nombre..." 
+                        <div class="input-area p-4 border-top border-secondary border-opacity-25" style="background: rgba(0,0,0,0.3);">
+                            <div class="input-group shadow-lg rounded-pill p-2 bg-dark border border-secondary border-opacity-50 focus-glow">
+                                <input type="text" class="form-control form-control-lg bg-transparent border-0 text-white shadow-none px-4 fs-6" 
+                                       placeholder="Escribe un mensaje para @clienteSeleccionado.Nombre..." 
                                        @bind="nuevoMensajeTexto" @onkeyup="@(e => { if(e.Key == "Enter") EnviarMensaje(); })" />
-                                <button class="btn btn-primary rounded-pill px-4 fw-bold shadow transition-hover" @onclick="EnviarMensaje">
-                                    <i class="bi bi-send-fill"></i>
+                                <button class="btn btn-gradient-primary rounded-pill px-5 fw-bold shadow transition-hover d-flex align-items-center" @onclick="EnviarMensaje">
+                                    <i class="bi bi-send-fill text-dark fs-5"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
                 }
+
+                @* ========================================== *@
+                @* TAB: MÉTRICAS (En desarrollo) *@
+                @* ========================================== *@
                 else
                 {
                     <div class="h-100 d-flex align-items-center justify-content-center text-white-50 fade-in">
-                        <h4>Módulo de @(tabActual) en desarrollo...</h4>
+                        <div class="text-center">
+                            <i class="bi bi-graph-up-arrow display-1 text-cyan opacity-25 mb-4"></i>
+                            <h3 class="fw-bold tracking-wide text-white mb-2">Módulo de Métricas e Hipertrofia</h3>
+                            <p class="text-muted fs-5">Aquí verás los pesos registrados y el progreso semanal.</p>
+                        </div>
                     </div>
                 }
             </div>
@@ -120,58 +241,92 @@
 </div>
 
 <style>
-    /* TEMA CYBER-MINT PARA DASHBOARD */
-.gymio-admin-container { background-color: #06070a; font-family: 'Segoe UI', Roboto, sans-serif; }
-.bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #000 !important; }
-.text-primary { color: #00FFA3 !important; }
-.bg-primary { background-color: #00FFA3 !important; color: #000 !important; }
+    /* =========================================================
+       EL SECRETO DE LA EXPANSIÓN (Márgenes Negativos)
+       Esto fuerza a la caja a ignorar el padding de Blazor 
+       ========================================================= */
+    .gymio-admin-container { 
+        background-color: #040508; 
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        /* Estos márgenes negativos contrarrestan el "px-4" o padding de tu MainLayout */
+        margin: -1.5rem; 
+        /* Calculamos la altura para que ocupe todo menos el top-row (asumiendo ~3.5rem del top-row) */
+        height: calc(100vh - 3.5rem); 
+        width: calc(100% + 3rem);
+    }
 
-/* GLASSMORPHISM AJUSTADO AL NUEVO FONDO */
-.glass-panel { background: rgba(15, 17, 26, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    /* BOTONES Y COLORES */
+    .btn-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508 !important; border: none; }
+    .btn-gradient-primary:hover { background: linear-gradient(135deg, #00e693, #00a5bf); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0, 255, 163, 0.4) !important; }
+    .text-primary { color: #00FFA3 !important; text-shadow: 0 0 15px rgba(0, 255, 163, 0.2); }
+    .bg-primary { background-color: #00FFA3 !important; }
+    .text-cyan { color: #00B8D4 !important; }
 
-/* SIDEBAR Y CLIENTES */
-.sidebar { width: 320px; z-index: 10; border-color: rgba(0, 255, 163, 0.1) !important; }
-.transition-all { transition: all 0.3s ease; }
-.hover-client { cursor: pointer; border: 1px solid transparent; }
-.hover-client:hover { background: rgba(0, 255, 163, 0.05); }
-.active-client { background: linear-gradient(90deg, rgba(0,255,163,0.12) 0%, rgba(25,25,25,0) 100%); border-left: 4px solid #00FFA3; cursor: pointer; }
+    /* GLASSMORPHISM - Modificado para blend con fondo oscuro */
+    .glass-panel { background: rgba(10, 13, 20, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 
-/* CHAT BUBBLES MODERNIZADAS */
-.msg-bubble { max-width: 75%; font-size: 0.95rem; }
-/* Burbuja del Entrenador (Menta/Cyan brillante con texto oscuro) */
-.entrenador-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; font-weight: 500; border-radius: 1.2rem 1.2rem 0 1.2rem; box-shadow: 0 4px 15px rgba(0, 255, 163, 0.2); }
-/* Burbuja del Cliente (Gris espacial azulado) */
-.cliente-bubble { background: #12151f; color: #e0e4f5; border-radius: 1.2rem 1.2rem 1.2rem 0; border: 1px solid #1f2538; }
-.msg-meta { font-size: 0.7rem; opacity: 0.7; }
+    /* SIDEBAR (Ahora más ancha) Y CLIENTES */
+    .sidebar { width: 380px; z-index: 10; border-color: rgba(0, 255, 163, 0.1) !important; }
+    .transition-all { transition: all 0.3s ease; }
+    .transition-hover { transition: all 0.2s ease; }
+    .transition-hover:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+    .hover-client { cursor: pointer; border: 1px solid transparent; }
+    .hover-client:hover { background: rgba(0, 255, 163, 0.05); }
+    .active-client { background: linear-gradient(90deg, rgba(0,255,163,0.1) 0%, transparent 100%); border-left: 4px solid #00FFA3; cursor: pointer; }
+    .hover-text-white:hover { color: white !important; }
+    .hover-white:hover { color: white !important; border-color: white !important; }
 
-/* ANIMACIONES */
-.fade-in { animation: fadeIn 0.4s ease-in-out; }
-.slide-up { animation: slideUp 0.3s ease-out; }
-@@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    /* CHAT BUBBLES MODERNIZADAS (Más grandes para leer mejor) */
+    .msg-bubble { max-width: 80%; font-size: 1.05rem; }
+    .entrenador-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; font-weight: 500; border-radius: 1.5rem 1.5rem 0 1.5rem; box-shadow: 0 5px 20px rgba(0, 255, 163, 0.25); }
+    .cliente-bubble { background: #121824; color: #e0e4f5; border-radius: 1.5rem 1.5rem 1.5rem 0; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .msg-meta { font-size: 0.75rem; opacity: 0.8; }
 
-/* SCROLLBAR NEÓN */
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 255, 163, 0.2); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 163, 0.6); }
+    /* INPUTS */
+    .form-control:focus, .form-select:focus { background-color: rgba(255,255,255,0.03) !important; color: white !important; border-color: #00FFA3 !important; box-shadow: 0 0 15px rgba(0, 255, 163, 0.15) !important; }
+    .focus-glow:focus-within { border-color: #00FFA3 !important; box-shadow: 0 0 20px rgba(0, 255, 163, 0.25) !important; }
 
-.tracking-widest { letter-spacing: 0.15em; }
-.tracking-wide { letter-spacing: 0.05em; }
+    /* ANIMACIONES */
+    .fade-in { animation: fadeIn 0.5s cubic-bezier(0.165, 0.84, 0.44, 1); }
+    .slide-up { animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* SCROLLBAR NEÓN */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 255, 163, 0.2); border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 163, 0.5); }
+    
+    /* TIPOGRAFÍA */
+    .tracking-widest { letter-spacing: 0.15em; }
+    .tracking-wide { letter-spacing: 0.05em; }
 </style>
 
 @code {
     private List<Cliente> misClientes = new();
     private Cliente? clienteSeleccionado;
     private ChatEntrenador chatActual = new();
-    private string tabActual = "chat";
+    private string tabActual = "rutina"; 
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
+    private int idEntrenadorActual;
 
     protected override async Task OnInitializedAsync()
     {
-        var todosLosClientes = await ClienteService.ObtenerClientesAsync("");
-        misClientes = todosLosClientes.ToList();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                idEntrenadorActual = int.Parse(userIdClaim.Value);
+            }
+        }
+
+        misClientes = await ClienteService.ObtenerClientesPorEntrenadorAsync(idEntrenadorActual);
 
         hubConnection = new HubConnectionBuilder()
             .WithUrl(Nav.ToAbsoluteUri("/chathub"))
@@ -181,7 +336,7 @@
         {
             if (clienteSeleccionado != null && chatActual != null && chatActual.Id == chatId)
             {
-                chatActual = await ChatService.ObtenerOCrearChatAsync(clienteSeleccionado.Id, 2);
+                chatActual = await ChatService.ObtenerOCrearChatAsync(clienteSeleccionado.Id, idEntrenadorActual);
                 await InvokeAsync(StateHasChanged);
             }
         });
@@ -192,14 +347,14 @@
     private async Task SeleccionarCliente(Cliente cliente)
     {
         clienteSeleccionado = cliente;
-        chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, 2);
+        chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, idEntrenadorActual);
     }
 
     private async Task EnviarMensaje()
     {
         if (!string.IsNullOrWhiteSpace(nuevoMensajeTexto))
         {
-            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Entrenador", RemitenteId = 2 };
+            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Entrenador", RemitenteId = idEntrenadorActual };
             await ChatService.EnviarMensajeAsync(chatActual.Id!, msg);
             
             if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)

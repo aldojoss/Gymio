@@ -101,9 +101,9 @@ app.MapRazorComponents<Gymio.Components.App>()
 // =====================================================================
 // 
 // =====================================================================
-app.MapPost("/api/login", async ([FromForm] string email, [FromForm] string password, Gymio.Interfaces.IAuthService authService, HttpContext context) =>
+app.MapPost("/api/login", async ([FromForm] string email, [FromForm] string password, [FromForm] string tipoAcceso, Gymio.Interfaces.IAuthService authService, HttpContext context) =>
 {
-    var resultado = await authService.AutenticarHibridoAsync(email, password);
+    var resultado = await authService.AutenticarHibridoAsync(email, password, tipoAcceso);
 
     if (resultado.Exito)
     {
@@ -117,7 +117,20 @@ app.MapPost("/api/login", async ([FromForm] string email, [FromForm] string pass
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
-        return Results.Redirect(resultado.Rol == "Cliente" ? "/mi-portal" : "/");
+        
+        if (resultado.Rol == "Cliente")
+        {
+            return Results.Redirect("/mi-portal");
+        }
+        else if (resultado.Rol == "Entrenador")
+        {
+            return Results.Redirect("/portal-entrenador");
+        }
+        else
+        {
+            
+            return Results.Redirect("/");
+        }
     }
 
     return Results.Redirect("/login?error=Credenciales incorrectas");

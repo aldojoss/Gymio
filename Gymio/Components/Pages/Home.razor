@@ -7,89 +7,162 @@
 
 <PageTitle>Gymio - Dashboard</PageTitle>
 
-<div class="container-fluid px-4 py-3">
-    <div class="row mb-4 align-items-center">
+<div class="page-container px-4 py-4 fade-in">
+    
+    @* ENCABEZADO *@
+    <div class="row mb-5 align-items-center slide-up">
         <div class="col">
-            <h5 class="text-primary fw-bold mb-0">BIENVENIDO DE NUEVO</h5>
-            <h1 class="text-white fw-black display-5" style="letter-spacing: -2px;">
-                DASHBOARD <span class="text-secondary opacity-50">GENERAL</span>
+            <h6 class="text-primary fw-bold mb-1 tracking-widest text-uppercase small">
+                <i class="bi bi-broadcast me-2"></i>Terminal Principal
+            </h6>
+            <h1 class="text-white fw-black display-5 mb-0 tracking-tight">
+                PANEL DE <span class="text-transparent bg-clip-text bg-gradient-primary">CONTROL</span>
             </h1>
         </div>
         <div class="col-auto">
-            <div class="bg-dark p-2 rounded-3 border border-secondary border-opacity-25 shadow-sm">
-                <span class="text-white-50 small fw-bold">HOY: @DateTime.Now.ToString("dd MMM, yyyy")</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-4 mb-5">
-        <div class="col-12 col-md-6 col-lg-3">
-            <div class="stat-card bg-gradient-orange p-4 rounded-4 shadow-orange position-relative overflow-hidden">
-                <i class="bi bi-currency-dollar card-icon"></i>
-                <div class="position-relative">
-                    <p class="text-white fw-bold small mb-1 opacity-75">INGRESOS DEL DÍA</p>
-                    <h2 class="text-white fw-black mb-0">C$ @ingresosHoy.ToString("N0")</h2>
+            <div class="bg-dark p-3 rounded-4 border border-secondary border-opacity-25 shadow-lg d-flex align-items-center">
+                <div class="bg-primary bg-opacity-20 rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-calendar3 text-primary"></i>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-6 col-lg-3">
-            <div class="stat-card bg-dark-card p-4 rounded-4 border border-secondary border-opacity-10 position-relative overflow-hidden">
-                <i class="bi bi-people card-icon-dark"></i>
-                <div class="position-relative">
-                    <p class="text-white-50 fw-bold small mb-1">SOCIOS TOTALES</p>
-                    <h2 class="text-white fw-black mb-0">@totalClientes</h2>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-6 col-lg-3">
-            <div class="stat-card bg-dark-card p-4 rounded-4 border border-secondary border-opacity-10 position-relative overflow-hidden">
-                <i class="bi bi-cart-check card-icon-dark"></i>
-                <div class="position-relative">
-                    <p class="text-white-50 fw-bold small mb-1">VENTAS DEL MES</p>
-                    <h2 class="text-white fw-black mb-0">@ventasMes</h2>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-6 col-lg-3">
-            <div class="stat-card bg-dark-card p-4 rounded-4 border border-secondary border-opacity-10 position-relative overflow-hidden">
-                <i class="bi bi-shield-check card-icon-dark"></i>
-                <div class="position-relative">
-                    <p class="text-white-50 fw-bold small mb-1">ESTADO SISTEMA</p>
-                    <h2 class="text-success fw-black mb-0 small"><i class="bi bi-circle-fill me-2 fs-6"></i>ONLINE</h2>
+                <div>
+                    <div class="text-white-50 small fw-bold tracking-widest text-uppercase" style="font-size: 0.7rem;">Fecha del Sistema</div>
+                    <div class="text-white fw-bold font-monospace">@DateTime.Now.ToString("dd MMM, yyyy").ToUpper()</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4">
+    @* TARJETAS DE MÉTRICAS (KPIs) *@
+    <div class="row g-4 mb-5 slide-up" style="animation-delay: 0.1s;">
+        
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card premium-card p-4 rounded-4 position-relative overflow-hidden h-100">
+                <div class="card-glow primary-glow"></div>
+                <div class="position-relative z-1">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <p class="text-white-50 fw-bold small mb-0 tracking-widest text-uppercase">Ingresos de Hoy</p>
+                        <i class="bi bi-currency-dollar fs-4 text-primary opacity-75"></i>
+                    </div>
+                    <h2 class="text-white fw-black mb-1 display-6 font-monospace">C$ @ingresosHoy.ToString("N0")</h2>
+                    <div class="text-success small fw-bold mt-2"><i class="bi bi-arrow-up-right me-1"></i>Actualizado</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card premium-card p-4 rounded-4 position-relative overflow-hidden h-100">
+                <div class="card-glow cyan-glow"></div>
+                <div class="position-relative z-1">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <p class="text-white-50 fw-bold small mb-0 tracking-widest text-uppercase">Socios Activos</p>
+                        <i class="bi bi-people fs-4 text-cyan opacity-75"></i>
+                    </div>
+                    <h2 class="text-white fw-black mb-1 display-6 font-monospace">@totalClientes</h2>
+                    <div class="text-cyan small fw-bold mt-2"><i class="bi bi-person-check-fill me-1"></i>En base de datos</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card premium-card p-4 rounded-4 position-relative overflow-hidden h-100">
+                <div class="card-glow purple-glow"></div>
+                <div class="position-relative z-1">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <p class="text-white-50 fw-bold small mb-0 tracking-widest text-uppercase">Ventas del Mes</p>
+                        <i class="bi bi-cart-check fs-4 text-purple opacity-75"></i>
+                    </div>
+                    <h2 class="text-white fw-black mb-1 display-6 font-monospace">@ventasMes</h2>
+                    <div class="text-purple small fw-bold mt-2"><i class="bi bi-graph-up me-1"></i>Transacciones</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="stat-card premium-card p-4 rounded-4 position-relative overflow-hidden h-100 d-flex flex-column justify-content-center align-items-center text-center">
+                <div class="card-glow success-glow"></div>
+                <div class="position-relative z-1">
+                    <div class="radar-pulse mb-3 mx-auto"></div>
+                    <p class="text-white-50 fw-bold small mb-1 tracking-widest text-uppercase">Estado del Servidor</p>
+                    <h4 class="text-white fw-black mb-0 tracking-widest">ONLINE</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 slide-up" style="animation-delay: 0.2s;">
+        
+        @* PANEL CENTRAL: ESTADÍSTICAS Y ACTIVIDAD *@
         <div class="col-12 col-xl-8">
-            <div class="card bg-dark bg-opacity-50 border-0 rounded-4 p-4 h-100">
+            
+            @* MINI GRÁFICO VISUAL (CSS PURO) *@
+            <div class="card premium-card border-0 rounded-4 p-4 mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="text-white fw-bold mb-0">ACTIVIDAD RECIENTE</h5>
-                    <a href="suscripciones" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Ver Todo</a>
+                    <h6 class="text-white fw-bold mb-0 tracking-widest text-uppercase"><i class="bi bi-bar-chart-fill text-primary me-2"></i> Flujo de Ingresos (Últimos 7 días)</h6>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover border-0 align-middle">
-                        <thead class="text-white-50 small">
-                            <tr>
-                                <th class="border-0">CLIENTE</th>
-                                <th class="border-0">MÉTODO</th>
-                                <th class="border-0">TOTAL</th>
-                                <th class="border-0 text-end">FECHA</th>
+                <div class="chart-container d-flex align-items-end justify-content-between px-2" style="height: 120px;">
+                    @foreach (var alto in alturasGrafico)
+                    {
+                        <div class="chart-bar-wrapper d-flex flex-column align-items-center" style="width: 10%;">
+                            <div class="chart-bar bg-gradient-primary rounded-top-2 w-100 transition-hover" style="height: @(alto)%; min-height: 5px;"></div>
+                        </div>
+                    }
+                </div>
+                <div class="d-flex justify-content-between px-2 mt-2 text-muted font-monospace small" style="font-size: 0.65rem;">
+                    <span>LUN</span><span>MAR</span><span>MIE</span><span>JUE</span><span>VIE</span><span>SAB</span><span>DOM</span>
+                </div>
+            </div>
+
+            @* TABLA DE ACTIVIDAD *@
+            <div class="card premium-card border-0 rounded-4 p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="text-white fw-bold mb-0 tracking-widest text-uppercase"><i class="bi bi-clock-history text-cyan me-2"></i> Actividad Reciente</h6>
+                    <a href="suscripciones" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold transition-hover text-uppercase" style="font-size: 0.75rem;">Ver Historial Completo</a>
+                </div>
+                
+                <div class="table-responsive custom-scrollbar">
+                    <table class="table modern-table table-borderless align-middle mb-0">
+                        <thead>
+                            <tr class="text-muted text-uppercase small tracking-widest" style="font-size: 0.7rem;">
+                                <th class="ps-3 pb-3">Socio / Cliente</th>
+                                <th class="pb-3">Método</th>
+                                <th class="pb-3">Monto</th>
+                                <th class="text-end pe-3 pb-3">Hora</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var v in ultimasVentas)
+                            @if (ultimasVentas == null || !ultimasVentas.Any())
                             {
                                 <tr>
-                                    <td class="border-0 fw-bold">@v.Cliente?.Nombre</td>
-                                    <td class="border-0"><span class="badge bg-secondary bg-opacity-25 text-white-50">@v.MetodoPago</span></td>
-                                    <td class="border-0 text-primary fw-bold">C$ @v.Total.ToString("N0")</td>
-                                    <td class="border-0 text-end text-white-50 small">@v.FechaVenta.ToString("hh:mm tt")</td>
+                                    <td colspan="4" class="text-center py-4 text-muted small font-monospace">No hay transacciones registradas hoy.</td>
                                 </tr>
+                            }
+                            else
+                            {
+                                @foreach (var v in ultimasVentas)
+                                {
+                                    <tr class="modern-row">
+                                        <td class="ps-3 py-3 rounded-start-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-dark rounded-circle p-2 me-3 border border-secondary border-opacity-25 d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
+                                                    <i class="bi bi-person-fill text-white-50"></i>
+                                                </div>
+                                                <span class="fw-bold text-white">@v.Cliente?.Nombre @v.Cliente?.Apellido</span>
+                                            </div>
+                                        </td>
+                                        <td class="py-3">
+                                            <span class="badge bg-dark border border-secondary border-opacity-50 text-white-50 px-2 py-1 fw-normal">
+                                                <i class="bi @(v.MetodoPago == "Efectivo" ? "bi-cash" : "bi-credit-card") me-1"></i> @v.MetodoPago
+                                            </span>
+                                        </td>
+                                        <td class="py-3 text-primary fw-black font-monospace">
+                                            C$ @v.Total.ToString("N2")
+                                        </td>
+                                        <td class="text-end pe-3 py-3 text-muted small font-monospace rounded-end-3">
+                                            @v.FechaVenta.ToString("hh:mm tt")
+                                        </td>
+                                    </tr>
+                                    <tr class="row-spacer"><td colspan="4"></td></tr>
+                                }
                             }
                         </tbody>
                     </table>
@@ -97,27 +170,51 @@
             </div>
         </div>
 
+        @* PANEL DERECHO: ACCESOS RÁPIDOS *@
         <div class="col-12 col-xl-4">
-            <div class="card bg-primary bg-opacity-10 border-primary border-opacity-10 rounded-4 p-4 h-100">
-                <h5 class="text-primary fw-bold mb-4">ACCESO RÁPIDO</h5>
-                <div class="d-grid gap-3">
-                    <a href="nuevo-cliente" class="btn btn-dark text-start p-3 rounded-3 border-0 d-flex align-items-center">
-                        <div class="bg-primary bg-opacity-20 p-2 rounded-2 me-3 text-primary"><i class="bi bi-person-plus"></i></div>
-                        <div>
-                            <div class="text-white fw-bold mb-0">Registrar Socio</div>
-                            <div class="text-white-50 small">Inscripción inmediata</div>
+            <div class="card premium-card border-0 rounded-4 p-4 h-100 d-flex flex-column">
+                <h6 class="text-white fw-bold mb-4 tracking-widest text-uppercase"><i class="bi bi-lightning-charge-fill text-warning me-2"></i> Panel de Acción</h6>
+                
+                <div class="d-flex flex-column gap-3 mb-4">
+                    <a href="nuevo-cliente" class="action-btn text-decoration-none rounded-4 p-3 d-flex align-items-center transition-hover">
+                        <div class="action-icon bg-primary bg-opacity-20 text-primary rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                            <i class="bi bi-person-plus-fill fs-4"></i>
                         </div>
+                        <div>
+                            <h6 class="text-white fw-bold mb-1">Registrar Nuevo Socio</h6>
+                            <p class="text-white-50 small mb-0">Inscripción al sistema</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto text-white-50"></i>
                     </a>
-                    <a href="acceso" class="btn btn-dark text-start p-3 rounded-3 border-0 d-flex align-items-center">
-                        <div class="bg-success bg-opacity-20 p-2 rounded-2 me-3 text-success"><i class="bi bi-qr-code-scan"></i></div>
-                        <div>
-                            <div class="text-white fw-bold mb-0">Control de Acceso</div>
-                            <div class="text-white-50 small">Validar membresía</div>
+
+                    <a href="acceso" class="action-btn text-decoration-none rounded-4 p-3 d-flex align-items-center transition-hover">
+                        <div class="action-icon bg-cyan bg-opacity-20 text-cyan rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                            <i class="bi bi-qr-code-scan fs-4"></i>
                         </div>
+                        <div>
+                            <h6 class="text-white fw-bold mb-1">Terminal de Acceso</h6>
+                            <p class="text-white-50 small mb-0">Escanear membresías</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto text-white-50"></i>
+                    </a>
+                    
+                    <a href="suscripciones" class="action-btn text-decoration-none rounded-4 p-3 d-flex align-items-center transition-hover">
+                        <div class="action-icon bg-purple bg-opacity-20 text-purple rounded-3 d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px;">
+                            <i class="bi bi-credit-card-fill fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-white fw-bold mb-1">Procesar Pagos</h6>
+                            <p class="text-white-50 small mb-0">Renovar suscripciones</p>
+                        </div>
+                        <i class="bi bi-chevron-right ms-auto text-white-50"></i>
                     </a>
                 </div>
-                <div class="mt-auto pt-4 text-center">
-                    <p class="text-white-50 small mb-0 font-italic">"La disciplina es el puente entre metas y logros."</p>
+
+                <div class="mt-auto p-4 rounded-4 border border-secondary border-opacity-25 text-center position-relative overflow-hidden" style="background-color: rgba(0,0,0,0.3);">
+                    <i class="bi bi-quote position-absolute text-white opacity-10" style="font-size: 5rem; top: -20px; left: -10px;"></i>
+                    <p class="text-white-50 small mb-0 position-relative z-1 fw-medium font-italic">
+                        "La disciplina es el puente entre las metas y los logros."
+                    </p>
                 </div>
             </div>
         </div>
@@ -125,19 +222,85 @@
 </div>
 
 <style>
+    /* Bases y Tipografía */
+    .page-container { font-family: 'Segoe UI', Roboto, sans-serif; }
     .fw-black { font-weight: 900 !important; }
-    .bg-gradient-orange { background: linear-gradient(135deg, #ff6b00 0%, #ff8c33 100%); }
-    .bg-dark-card { background-color: #1a1a1a; }
-    .shadow-orange { box-shadow: 0 10px 30px rgba(255, 107, 0, 0.25); }
+    .tracking-widest { letter-spacing: 0.15em; }
+    .tracking-tight { letter-spacing: -1px; }
     
-    .stat-card { transition: transform 0.3s ease; cursor: default; }
-    .stat-card:hover { transform: translateY(-5px); }
+    /* Paleta de Colores Cyber-Mint */
+    .text-primary { color: #00FFA3 !important; }
+    .text-cyan { color: #00B8D4 !important; }
+    .text-purple { color: #8B5CF6 !important; }
     
-    .card-icon { font-size: 5rem; position: absolute; right: -10px; bottom: -20px; color: rgba(255,255,255,0.1); transform: rotate(-15deg); }
-    .card-icon-dark { font-size: 5rem; position: absolute; right: -10px; bottom: -20px; color: rgba(255,107,0,0.05); transform: rotate(-15deg); }
+    .bg-cyan { background-color: #00B8D4 !important; }
+    .bg-purple { background-color: #8B5CF6 !important; }
+
+    .bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); }
+    .text-transparent { color: transparent; }
+    .bg-clip-text { -webkit-background-clip: text; background-clip: text; }
+
+    /* Tarjetas Glassmorphism Premium */
+    .premium-card {
+        background-color: rgba(15, 20, 30, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
     
-    .table-dark { background-color: transparent; }
-    .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.02); }
+    /* Resplandores de fondo para las tarjetas de stats */
+    .card-glow {
+        position: absolute; width: 100px; height: 100px; right: -20px; top: -20px;
+        border-radius: 50%; filter: blur(40px); opacity: 0.15; transition: opacity 0.3s ease;
+    }
+    .stat-card:hover .card-glow { opacity: 0.3; }
+    
+    .primary-glow { background: #00FFA3; }
+    .cyan-glow { background: #00B8D4; }
+    .purple-glow { background: #8B5CF6; }
+    .success-glow { background: #10b981; }
+
+    /* Efectos Hover */
+    .stat-card { transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: default; }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); }
+    .transition-hover { transition: all 0.3s ease; }
+
+    /* Gráfico CSS */
+    .chart-bar { box-shadow: 0 0 10px rgba(0, 255, 163, 0.2); }
+    .chart-bar:hover { filter: brightness(1.2); box-shadow: 0 0 15px rgba(0, 255, 163, 0.5); }
+
+    /* Botones de Acción Laterales */
+    .action-btn { background-color: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.03); }
+    .action-btn:hover { background-color: rgba(255, 255, 255, 0.05); transform: translateX(5px); border-color: rgba(255,255,255,0.1); }
+
+    /* Tabla Moderna */
+    .modern-table { border-collapse: separate; border-spacing: 0; }
+    .modern-row td { background-color: rgba(255,255,255,0.015); border-top: 1px solid rgba(255, 255, 255, 0.02); border-bottom: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.2s ease; }
+    .modern-row td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.02); }
+    .modern-row td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.02); }
+    .row-spacer td { height: 8px; padding: 0; background: transparent; border: none; }
+    .modern-row:hover td { background-color: rgba(255, 255, 255, 0.04); transform: scale(1.01); }
+
+    /* Scrollbar minimalista */
+    .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+    /* Animación del radar "ONLINE" */
+    .radar-pulse {
+        width: 15px; height: 15px; background-color: #10b981; border-radius: 50%; position: relative;
+    }
+    .radar-pulse::after {
+        content: ''; position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px;
+        border: 2px solid #10b981; border-radius: 50%; animation: pulse-ring 2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+
+    /* Animaciones Generales */
+    .fade-in { animation: fadeIn 0.5s ease-in-out; }
+    .slide-up { animation: slideUp 0.6s cubic-bezier(0.165, 0.84, 0.44, 1); animation-fill-mode: both; }
+    
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @@keyframes pulse-ring { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
 </style>
 
 @code {
@@ -145,6 +308,10 @@
     private decimal ingresosHoy = 0;
     private int ventasMes = 0;
     private List<Venta> ultimasVentas = new();
+    
+    // Array simulado para dibujar el mini-gráfico de barras CSS de los últimos 7 días
+    // Podés conectar esto a tu backend después trayendo una lista de porcentajes
+    private int[] alturasGrafico = new int[] { 30, 50, 20, 80, 45, 90, 65 };
 
     protected override async Task OnInitializedAsync()
     {

@@ -9,14 +9,14 @@ namespace Gymio.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
 
-        // Vinculamos a los usuarios de tu base de datos SQL
+        // se vinvulan a la bd
         public int ClienteId { get; set; }
         public int EntrenadorId { get; set; }
 
         public DateTime FechaUltimoMensaje { get; set; }
 
-        // Todo el historial del chat se guarda en esta lista anidada
-        public List<Mensaje> Historial { get; set; } = new();
+        // asi evito errores si el chat esta vacio no se
+        public List<Mensaje> Historial { get; set; } = new List<Mensaje>();
     }
 
     public class Mensaje
