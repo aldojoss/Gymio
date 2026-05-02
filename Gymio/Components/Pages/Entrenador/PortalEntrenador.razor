@@ -10,12 +10,13 @@
 @using System.Security.Claims
 @inject IChatService ChatService
 @inject IClienteService ClienteService
+@inject IRutinaService RutinaService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
 <div class="gymio-admin-container d-flex text-light overflow-hidden">
     
-    @* PANEL LATERAL: MIS ATLETAS (Agrandado para no sentirse achicado) *@
+    @* PANEL LATERAL: MIS ATLETAS *@
     <div class="sidebar glass-panel d-flex flex-column border-end border-secondary border-opacity-25 shadow-lg">
         <div class="p-4 border-bottom border-secondary border-opacity-25 d-flex align-items-center">
             <h5 class="fw-black text-uppercase tracking-widest text-primary mb-0 flex-grow-1">
@@ -63,7 +64,7 @@
         </div>
     </div>
 
-    @* ÁREA DE TRABAJO PRINCIPAL (Expandida) *@
+    @* ÁREA DE TRABAJO PRINCIPAL *@
     <div class="workspace flex-grow-1 d-flex flex-column bg-dark position-relative">
         @if (clienteSeleccionado == null)
         {
@@ -105,7 +106,7 @@
                 @if (tabActual == "rutina")
                 {
                     <div class="row h-100 g-4 fade-in">
-                        @* Formulario para asignar bloque de ejercicios *@
+                        @* FORMULARIO *@
                         <div class="col-12 col-xl-5 h-100 d-flex flex-column">
                             <div class="card glass-panel border-secondary border-opacity-25 rounded-4 h-100 overflow-hidden d-flex flex-column shadow-lg">
                                 <div class="card-header border-bottom border-secondary border-opacity-25 p-4 bg-transparent">
@@ -115,67 +116,87 @@
                                     
                                     <div class="mb-4">
                                         <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Día / Músculo</label>
-                                        <select class="form-select form-select-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6">
-                                            <option value="Pierna">Día de Pierna (Cuádriceps/Glúteo)</option>
-                                            <option value="Empuje">Pecho / Hombro / Tríceps</option>
-                                            <option value="Jalon">Espalda / Bíceps</option>
-                                            <option value="Fullbody">Cuerpo Completo</option>
-                                        </select>
+                                        <div class="mb-4">
+    <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Nombre del Día o Bloque</label>
+    <input type="text" @bind="diaSeleccionado" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: Día 1 - Pierna Pesada, Lunes - Pecho..." />
+</div>
                                     </div>
 
                                     <div class="mb-4">
                                         <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Ejercicio</label>
-                                        <input type="text" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: Pushdowns en polea recta..." />
+                                        <input type="text" @bind="nuevoEjercicio.NombreEjercicio" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: Pushdowns en polea recta..." />
                                     </div>
 
                                     <div class="row g-4 mb-4">
                                         <div class="col-6">
                                             <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Series</label>
-                                            <input type="number" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 4" />
+                                            <input type="number" @bind="nuevoEjercicio.Series" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 4" />
                                         </div>
                                         <div class="col-6">
                                             <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Reps Objetivo</label>
-                                            <input type="text" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 8 - 12" />
+                                            <input type="text" @bind="nuevoEjercicio.Repeticiones" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 8 - 12" />
                                         </div>
                                     </div>
 
                                     <div class="mb-5">
                                         <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Instrucciones Técnicas</label>
-                                        <textarea class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none" rows="4" placeholder="Ej: Hacer 1 Top Set pesado. Las otras 3 series efectivas bajarle al peso y buscar el fallo..."></textarea>
+                                        <textarea @bind="nuevoEjercicio.NotasCoach" class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none" rows="4" placeholder="Ej: Hacer 1 Top Set pesado. Las otras 3 series efectivas bajarle al peso y buscar el fallo..."></textarea>
                                     </div>
 
-                                    <button class="btn btn-gradient-primary w-100 fw-bold py-3 fs-5 rounded-3 shadow mt-auto tracking-wide">
+                                    <button class="btn btn-gradient-primary w-100 fw-bold py-3 fs-5 rounded-3 shadow mt-auto tracking-wide" @onclick="AgregarEjercicioTemporal">
                                         Agregar al Plan
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        @* Vista previa de la rutina armada *@
+                        @* VISTA PREVIA *@
                         <div class="col-12 col-xl-7 h-100">
                             <div class="card bg-dark border-secondary border-opacity-25 rounded-4 h-100 d-flex flex-column shadow-lg">
                                 <div class="card-header border-bottom border-secondary border-opacity-25 p-4 bg-transparent d-flex justify-content-between align-items-center">
-                                    <h5 class="fw-bold text-white mb-0 tracking-wide">Plan Actual: <span class="text-primary">Día de Pierna</span></h5>
-                                    <button class="btn btn-outline-primary rounded-pill fw-bold px-4">Guardar Cambios</button>
+                                    <h5 class="fw-bold text-white mb-0 tracking-wide">Plan Actual: <span class="text-primary">@diaSeleccionado</span></h5>
+                                    <button class="btn btn-outline-primary rounded-pill fw-bold px-4" @onclick="GuardarRutinaEnBD" disabled="@guardandoRutina">
+                                        @(guardandoRutina ? "Guardando..." : "Guardar Cambios BD")
+                                    </button>
                                 </div>
                                 <div class="card-body p-4 overflow-auto custom-scrollbar">
                                     
-                                    @* Elemento de lista simulado *@
-                                    <div class="bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded-4 p-4 mb-3 d-flex justify-content-between align-items-center transition-hover">
-                                        <div>
-                                            <h5 class="text-white fw-bold mb-2">1. Sentadilla Libre (Barra baja)</h5>
-                                            <div class="d-flex gap-4 text-primary fw-bold font-monospace mb-2">
-                                                <span><i class="bi bi-layers me-2"></i>4 Series</span>
-                                                <span><i class="bi bi-arrow-repeat me-2"></i>8-10 Reps</span>
-                                            </div>
-                                            <p class="text-muted small mt-2 mb-0 border-start border-primary ps-3">Enfocate en romper la paralela. Descanso 3 min.</p>
-                                        </div>
-                                        <div class="d-flex gap-2">
-                                            <button class="btn btn-dark border border-secondary border-opacity-25 text-white-50 hover-white p-2 rounded-3"><i class="bi bi-pencil fs-5"></i></button>
-                                            <button class="btn btn-dark border border-danger border-opacity-25 text-danger hover-white p-2 rounded-3"><i class="bi bi-trash fs-5"></i></button>
-                                        </div>
-                                    </div>
+                                    @{
+                                        var diaActual = rutinaActual.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
+                                    }
 
+                                    @if (diaActual == null || !diaActual.Ejercicios.Any())
+                                    {
+                                        <div class="text-center mt-5">
+                                            <div class="bg-dark rounded-circle p-3 d-inline-block mb-3 border border-secondary border-opacity-25">
+                                                <i class="bi bi-card-checklist fs-1 text-white-50"></i>
+                                            </div>
+                                            <p class="text-white-50">No hay ejercicios asignados para <strong>@diaSeleccionado</strong> aún.</p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        int contador = 1;
+                                        @foreach (var ej in diaActual.Ejercicios)
+                                        {
+                                            <div class="bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded-4 p-4 mb-3 d-flex justify-content-between align-items-center transition-hover">
+                                                <div>
+                                                    <h5 class="text-white fw-bold mb-2">@(contador++). @ej.NombreEjercicio</h5>
+                                                    <div class="d-flex gap-4 text-primary fw-bold font-monospace mb-2">
+                                                        <span><i class="bi bi-layers me-2"></i>@ej.Series Series</span>
+                                                        <span><i class="bi bi-arrow-repeat me-2"></i>@ej.Repeticiones Reps</span>
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(ej.NotasCoach))
+                                                    {
+                                                        <p class="text-muted small mt-2 mb-0 border-start border-primary ps-3">@ej.NotasCoach</p>
+                                                    }
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn btn-dark border border-danger border-opacity-25 text-danger hover-white p-2 rounded-3" @onclick="() => EliminarEjercicio(diaActual, ej)"><i class="bi bi-trash fs-5"></i></button>
+                                                </div>
+                                            </div>
+                                        }
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -223,7 +244,7 @@
                 }
 
                 @* ========================================== *@
-                @* TAB: MÉTRICAS (En desarrollo) *@
+                @* TAB: MÉTRICAS *@
                 @* ========================================== *@
                 else
                 {
@@ -241,16 +262,11 @@
 </div>
 
 <style>
-    /* =========================================================
-       EL SECRETO DE LA EXPANSIÓN (Márgenes Negativos)
-       Esto fuerza a la caja a ignorar el padding de Blazor 
-       ========================================================= */
+    /* EL SECRETO DE LA EXPANSIÓN (Márgenes Negativos) */
     .gymio-admin-container { 
         background-color: #040508; 
         font-family: 'Segoe UI', Roboto, sans-serif;
-        /* Estos márgenes negativos contrarrestan el "px-4" o padding de tu MainLayout */
         margin: -1.5rem; 
-        /* Calculamos la altura para que ocupe todo menos el top-row (asumiendo ~3.5rem del top-row) */
         height: calc(100vh - 3.5rem); 
         width: calc(100% + 3rem);
     }
@@ -262,10 +278,10 @@
     .bg-primary { background-color: #00FFA3 !important; }
     .text-cyan { color: #00B8D4 !important; }
 
-    /* GLASSMORPHISM - Modificado para blend con fondo oscuro */
+    /* GLASSMORPHISM */
     .glass-panel { background: rgba(10, 13, 20, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 
-    /* SIDEBAR (Ahora más ancha) Y CLIENTES */
+    /* SIDEBAR Y CLIENTES */
     .sidebar { width: 380px; z-index: 10; border-color: rgba(0, 255, 163, 0.1) !important; }
     .transition-all { transition: all 0.3s ease; }
     .transition-hover { transition: all 0.2s ease; }
@@ -276,7 +292,7 @@
     .hover-text-white:hover { color: white !important; }
     .hover-white:hover { color: white !important; border-color: white !important; }
 
-    /* CHAT BUBBLES MODERNIZADAS (Más grandes para leer mejor) */
+    /* CHAT BUBBLES */
     .msg-bubble { max-width: 80%; font-size: 1.05rem; }
     .entrenador-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; font-weight: 500; border-radius: 1.5rem 1.5rem 0 1.5rem; box-shadow: 0 5px 20px rgba(0, 255, 163, 0.25); }
     .cliente-bubble { background: #121824; color: #e0e4f5; border-radius: 1.5rem 1.5rem 1.5rem 0; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
@@ -311,6 +327,12 @@
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
     private int idEntrenadorActual;
+
+
+    private Rutina rutinaActual = new Rutina();
+    private EjercicioRutina nuevoEjercicio = new EjercicioRutina();
+    private string diaSeleccionado = "Día de Pierna"; 
+    private bool guardandoRutina = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -348,6 +370,75 @@
     {
         clienteSeleccionado = cliente;
         chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, idEntrenadorActual);
+        
+       
+        var rutinaDb = await RutinaService.ObtenerRutinaActivaAsync(cliente.Id);
+        if (rutinaDb != null)
+        {
+            rutinaActual = rutinaDb;
+        }
+        else
+        {
+
+            rutinaActual = new Rutina 
+            { 
+                ClienteId = cliente.Id, 
+                EntrenadorId = idEntrenadorActual, 
+                Titulo = "Plan General de Entrenamiento", 
+                Activa = true,
+                FechaInicio = DateTime.Now
+            };
+        }
+    }
+
+    private void AgregarEjercicioTemporal()
+    {
+        if (string.IsNullOrWhiteSpace(nuevoEjercicio.NombreEjercicio)) return;
+
+  
+        var dia = rutinaActual.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
+        
+      
+        if (dia == null)
+        {
+            dia = new DiaEntrenamiento { NombreDia = diaSeleccionado };
+            rutinaActual.Dias.Add(dia);
+        }
+
+      
+        dia.Ejercicios.Add(new EjercicioRutina
+        {
+            NombreEjercicio = nuevoEjercicio.NombreEjercicio,
+            Series = nuevoEjercicio.Series,
+            Repeticiones = nuevoEjercicio.Repeticiones,
+            NotasCoach = nuevoEjercicio.NotasCoach
+        });
+
+     
+        nuevoEjercicio = new EjercicioRutina();
+    }
+
+    private async Task GuardarRutinaEnBD()
+    {
+        guardandoRutina = true;
+        
+        if (string.IsNullOrEmpty(rutinaActual.Id))
+        {
+            
+            await RutinaService.CrearRutinaAsync(rutinaActual);
+        }
+        else
+        {
+            
+            await RutinaService.ActualizarRutinaAsync(rutinaActual);
+        }
+        
+        guardandoRutina = false;
+    }
+    
+    private void EliminarEjercicio(DiaEntrenamiento dia, EjercicioRutina ej)
+    {
+        dia.Ejercicios.Remove(ej);
     }
 
     private async Task EnviarMensaje()
