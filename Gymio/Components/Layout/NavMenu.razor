@@ -1,8 +1,7 @@
 ﻿<nav class="flex-column p-3 gap-1">
         
     @* ========================================================
-           ZONA EXCLUSIVA PARA ADMINS Y EMPLEADOS 
-           (El entrenador ya no verá esto)
+           admins y empleados
            ======================================================== *@
     <AuthorizeView Roles="Administrador, Empleado">
         <Authorized>
@@ -63,7 +62,7 @@
     </AuthorizeView>
 
     @* ========================================================
-           ZONA TÉCNICA (Admins y Entrenadores)
+           admin y entrenadores
            ======================================================== *@
     <AuthorizeView Roles="Administrador, Entrenador">
         <Authorized>
@@ -77,7 +76,7 @@
     </AuthorizeView>
 
     @* ========================================================
-           ZONA EXCLUSIVA PARA EL CLIENTE
+           the client
            ======================================================== *@
     <AuthorizeView Roles="Cliente">
         <Authorized>

@@ -39,7 +39,7 @@ namespace Gymio.Services
                 return false;
             }
             // 1el codigo generamos uno unico para evitar errores al 100*100
-            // Formato: GYM-AÑO-MES-DIA-5LetrasAleatorias
+            // el formato: GYM-AÑO-MES-DIA-5LetrasAleatorias
             string fecha = DateTime.Now.ToString("yyyyMMdd");
             string identificadorUnico = Guid.NewGuid().ToString().Substring(0, 5).ToUpper();
 

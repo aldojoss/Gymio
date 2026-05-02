@@ -163,7 +163,7 @@
 
     protected override void OnInitialized()
     {
-        // Si hay error de credenciales, la API lo manda por la URL y lo atrapamos aquí
+        // si hay un mensaje de error en la query string, ps lo asignamos a errorMessage para mostrarlo en la UI
         if (!string.IsNullOrEmpty(error)) 
         { 
             errorMessage = error; 
