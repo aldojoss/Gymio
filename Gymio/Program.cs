@@ -40,6 +40,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IVentaService, VentaService>();
 builder.Services.AddScoped<IRutinaService, RutinaService>();
 builder.Services.AddScoped<IChatService,ChatService >();
+builder.Services.AddScoped<IRegistroEntrenamientoService, RegistroEntrenamientoService>();
+builder.Services.AddScoped<IProductoService, ProductoService>();
+
 builder.Services.AddSignalR();
 
 

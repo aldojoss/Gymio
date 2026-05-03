@@ -21,6 +21,13 @@
                 </NavLink>
             </div>
 
+            @* NUEVO: PUNTO DE VENTA *@
+            <div class="nav-item">
+                <NavLink class="nav-link" href="punto-venta">
+                    <i class="bi bi-shop nav-icon"></i> Punto de Venta
+                </NavLink>
+            </div>
+
             <div class="nav-item">
                 <NavLink class="nav-link" href="suscripciones">
                     <i class="bi bi-credit-card-fill nav-icon"></i> Pagos y Planes
@@ -53,6 +60,13 @@
                 </NavLink>
             </div>
 
+            @* NUEVO: INVENTARIO *@
+            <div class="nav-item">
+                <NavLink class="nav-link" href="inventario">
+                    <i class="bi bi-box-seam-fill nav-icon"></i> Inventario
+                </NavLink>
+            </div>
+
             <div class="nav-item text-muted mt-2">
                 <div class="nav-link disabled-link">
                     <i class="bi bi-bar-chart-line-fill nav-icon opacity-50"></i> <span class="opacity-50">Reportes (Pronto)</span>
@@ -64,7 +78,7 @@
     @* ========================================================
            admin y entrenadores
            ======================================================== *@
-    <AuthorizeView Roles="Administrador, Entrenador">
+    <AuthorizeView Roles="Entrenador">
         <Authorized>
             <div class="nav-category mt-4 text-cyan">Área Técnica</div>
             <div class="nav-item">
@@ -89,5 +103,4 @@
             </div>
         </Authorized>
     </AuthorizeView>
-
 </nav>

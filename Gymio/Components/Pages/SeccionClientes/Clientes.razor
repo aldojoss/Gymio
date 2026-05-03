@@ -33,12 +33,13 @@
 
     @* tabla estilo tarjetas flotantes *@
     <div class="table-responsive custom-scrollbar pb-3">
-        <table class="table modern-table table-borderless align-middle mb-0" style="min-width: 900px;">
+        <table class="table modern-table table-borderless align-middle mb-0" style="min-width: 1000px;">
             <thead>
                 <tr class="text-muted text-uppercase small tracking-widest" style="font-size: 0.75rem;">
                     <th class="ps-4 pb-3">Cliente</th>
                     <th class="pb-3">Contacto</th>
                     <th class="pb-3">Fecha de Ingreso</th>
+                    <th class="pb-3">Coach</th> @* NUEVA COLUMNA *@
                     <th class="pb-3">Estado</th>
                     <th class="text-end pe-4 pb-3">Acciones</th>
                 </tr>
@@ -47,7 +48,7 @@
                 @if (listaClientes == null)
                 {
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">
+                        <td colspan="6" class="text-center py-5 text-muted">
                             <div class="spinner-border text-primary mb-3" role="status"></div>
                             <div>Cargando datos...</div>
                         </td>
@@ -56,7 +57,7 @@
                 else if (!listaClientes.Any())
                 {
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">
+                        <td colspan="6" class="text-center py-5 text-muted">
                             <div class="bg-dark d-inline-block p-4 rounded-circle mb-3 border border-secondary border-opacity-25">
                                 <i class="bi bi-people-fill display-4 text-white-50"></i>
                             </div>
@@ -95,6 +96,23 @@
                                 <i class="bi bi-calendar3 text-muted me-2 small"></i>
                                 @cliente.FechaRegistro.ToString("dd/MMM/yyyy")
                             </td>
+                            
+                            @* CELDA DEL COACH ASIGNADO *@
+                            <td class="py-3">
+                                @if (asignacionesClientes.TryGetValue(cliente.Id, out int coachId) && nombresEntrenadores.TryGetValue(coachId, out string nombreCoach))
+                                {
+                                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3 py-2 fw-normal">
+                                        <i class="bi bi-person-check-fill me-1"></i> @nombreCoach
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary bg-opacity-10 text-white-50 border border-secondary border-opacity-25 rounded-pill px-3 py-2 fw-normal">
+                                        <i class="bi bi-person-x me-1"></i> Sin Asignar
+                                    </span>
+                                }
+                            </td>
+
                             <td class="py-3">
                                 @if (cliente.Activo)
                                 {
@@ -118,7 +136,7 @@
                                 </button>
                             </td>
                         </tr>
-                        <tr class="row-spacer"><td colspan="5"></td></tr>
+                        <tr class="row-spacer"><td colspan="6"></td></tr>
                     }
                 }
             </tbody>
@@ -178,7 +196,7 @@
     </div>
 }
 
-@* MODAL DE ASIGNACION *@
+@* MODAL DE ASIGNACION (VALIDADO) *@
 @if (mostrarModalAsignacion)
 {
     <div class="modal fade show d-block fade-in" tabindex="-1" style="background-color: rgba(4, 5, 8, 0.8); backdrop-filter: blur(8px);">
@@ -194,23 +212,48 @@
                     <button type="button" class="btn-close btn-close-white opacity-50 shadow-none" @onclick="CerrarModalAsignacion"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <p class="mb-4 text-muted">Selecciona el entrenador a cargo para <strong class="text-white">@clienteAsignacion.Nombre @clienteAsignacion.Apellido</strong></p>
+                    <p class="mb-4 text-muted">Panel de asignación para <strong class="text-white">@clienteAsignacion.Nombre @clienteAsignacion.Apellido</strong></p>
                     
-                    <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Coach Disponible</label>
-                    <select class="form-select bg-transparent border-secondary border-opacity-50 text-white shadow-none rounded-3 py-2" @bind="idEntrenadorSeleccionado">
-                        <option value="0" disabled selected class="text-dark">-- Elige un entrenador --</option>
-                        @if (listaEntrenadores != null)
-                        {
-                            @foreach (var coach in listaEntrenadores)
+                    @if (yaTieneEntrenador)
+                    {
+                        @* ALERTA SI YA TIENE ENTRENADOR *@
+                        <div class="alert alert-warning bg-warning bg-opacity-10 border-warning border-opacity-25 text-warning mb-4 rounded-3 d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                            <div>
+                                <div class="fw-bold tracking-wide">Asignación Bloqueada</div>
+                                <small>Este atleta ya está bajo la supervisión de un coach. No se puede reasignar desde aquí.</small>
+                            </div>
+                        </div>
+
+                        <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Coach Actual</label>
+                        <select class="form-select bg-dark border-secondary border-opacity-25 text-white-50 shadow-none rounded-3 py-2" disabled>
+                            <option selected>@(nombresEntrenadores.GetValueOrDefault(idEntrenadorSeleccionado, "Entrenador Asignado"))</option>
+                        </select>
+                    }
+                    else
+                    {
+                        @* FORMULARIO NORMAL SI ESTÁ LIBRE *@
+                        <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Coach Disponible</label>
+                        <select class="form-select bg-transparent border-secondary border-opacity-50 text-white shadow-none rounded-3 py-2" @bind="idEntrenadorSeleccionado">
+                            <option value="0" disabled selected class="text-dark">-- Elige un entrenador --</option>
+                            @if (listaEntrenadores != null)
                             {
-                                <option value="@coach.Id" class="text-dark">@coach.NombreCompleto</option>
+                                @foreach (var coach in listaEntrenadores)
+                                {
+                                    <option value="@coach.Id" class="text-dark">@coach.NombreCompleto</option>
+                                }
                             }
-                        }
-                    </select>
+                        </select>
+                    }
                 </div>
                 <div class="modal-footer border-top border-secondary border-opacity-25 p-4" style="background-color: rgba(255,255,255,0.02);">
                     <button type="button" class="btn btn-link text-muted text-decoration-none fw-bold px-4" @onclick="CerrarModalAsignacion">Cancelar</button>
-                    <button type="button" class="btn btn-gradient fw-bold rounded-pill px-4 shadow-sm" @onclick="GuardarAsignacion">Confirmar</button>
+                    
+                    @* OCULTAMOS EL BOTON DE CONFIRMAR SI YA TIENE COACH *@
+                    @if (!yaTieneEntrenador)
+                    {
+                        <button type="button" class="btn btn-gradient fw-bold rounded-pill px-4 shadow-sm" @onclick="GuardarAsignacion">Confirmar</button>
+                    }
                 </div>
             </div>
         </div>
@@ -247,6 +290,7 @@
 
     /* utilidades */
     .tracking-widest { letter-spacing: 0.1em; }
+    .tracking-wide { letter-spacing: 0.05em; }
     .transition-hover { transition: all 0.3s ease; }
     .fade-in { animation: fadeIn 0.3s ease-in-out; }
     .slide-up { animation: slideUp 0.3s ease-out; }
@@ -262,6 +306,10 @@
     private List<Cliente>? listaClientes;
     private string terminoBusqueda = "";
 
+    // Caché para mostrar en la tabla
+    private Dictionary<int, string> nombresEntrenadores = new();
+    private Dictionary<int, int> asignacionesClientes = new();
+
     // variables para el modal de edicion
     private bool mostrarModal = false;
     private Cliente clienteActual = new Cliente();
@@ -271,9 +319,20 @@
     private Cliente clienteAsignacion = new Cliente();
     private List<Usuario> listaEntrenadores = new List<Usuario>();
     private int idEntrenadorSeleccionado = 0;
+    private bool yaTieneEntrenador = false;
 
     protected override async Task OnInitializedAsync()
     {
+        
+        listaEntrenadores = await ClienteService.ObtenerEntrenadoresAsync();
+        if (listaEntrenadores != null)
+        {
+            foreach (var coach in listaEntrenadores)
+            {
+                nombresEntrenadores[coach.Id] = coach.NombreCompleto;
+            }
+        }
+
         await CargarClientes();
     }
 
@@ -284,8 +343,23 @@
 
     private async Task CargarClientes()
     {
-        // este metodo obtiene los clientes filtrados
         listaClientes = await ClienteService.ObtenerClientesAsync(terminoBusqueda);
+
+       
+        asignacionesClientes.Clear();
+        if (listaClientes != null)
+        {
+            foreach (var cliente in listaClientes)
+            {
+                int coachId = await ClienteService.ObtenerIdEntrenadorAsignadoAsync(cliente.Id);
+                
+              
+                if (coachId > 0) 
+                {
+                    asignacionesClientes[cliente.Id] = coachId;
+                }
+            }
+        }
     }
 
     private void AbrirModalEdicion(Cliente cliente)
@@ -320,17 +394,11 @@
     {
         clienteAsignacion = cliente;
         
-        // cargamos la lista de entrenadores disponibles
-        listaEntrenadores = await ClienteService.ObtenerEntrenadoresAsync();
         
-        // buscamos si ya tenia uno asignado
         idEntrenadorSeleccionado = await ClienteService.ObtenerIdEntrenadorAsignadoAsync(cliente.Id);
         
-        // si el servicio devuelve 2 que es el admin por defecto lo regresamos a 0
-        if (idEntrenadorSeleccionado == 2)
-        {
-            idEntrenadorSeleccionado = 0;
-        }
+        
+        yaTieneEntrenador = idEntrenadorSeleccionado > 0;
 
         mostrarModalAsignacion = true;
     }
@@ -342,10 +410,11 @@
 
     private async Task GuardarAsignacion()
     {
-        if (idEntrenadorSeleccionado > 0)
+        
+        if (idEntrenadorSeleccionado > 0 && !yaTieneEntrenador)
         {
-            // mandamos a guardar la relacion a la base de datos
             await ClienteService.AsignarEntrenadorAsync(clienteAsignacion.Id, idEntrenadorSeleccionado);
+            await CargarClientes(); 
             mostrarModalAsignacion = false;
         }
     }

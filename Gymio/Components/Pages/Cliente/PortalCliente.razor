@@ -10,14 +10,13 @@
 @using System.Security.Claims
 @inject IRutinaService RutinaService
 @inject IChatService ChatService
+@inject IRegistroEntrenamientoService RegistroEntrenamientoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
 <PageTitle>Mi Entrenamiento - Gymio</PageTitle>
 
 <div class="gymio-mobile-app text-light d-flex flex-column vh-100 overflow-hidden">
-    
-    @* ENCABEZADO MÓVIL *@
     <div class="app-header p-4 glass-panel border-bottom border-secondary border-opacity-25 z-2 shadow-sm">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -29,14 +28,13 @@
             </div>
         </div>
 
-        @* TABS ESTILO iOS *@
         <div class="ios-tabs d-flex p-1 rounded-pill" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05);">
             <button class="btn rounded-pill flex-grow-1 py-2 transition-all fw-bold tracking-wide @(tabActual == "entrenamiento" ? "bg-primary text-dark shadow" : "text-white-50")" @onclick='() => tabActual = "entrenamiento"'>
                 <i class="bi bi-activity"></i> Hoy
             </button>
             <button class="btn rounded-pill flex-grow-1 py-2 transition-all fw-bold tracking-wide @(tabActual == "chat" ? "bg-primary text-dark shadow" : "text-white-50")" @onclick="AbrirChat">
                 <i class="bi bi-chat-dots-fill"></i> Chat Coach
-                @if(mensajesSinLeer > 0)
+                @if (mensajesSinLeer > 0)
                 {
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">@mensajesSinLeer</span>
                 }
@@ -44,12 +42,7 @@
         </div>
     </div>
 
-    @* CONTENIDO PRINCIPAL SCROLLABLE *@
     <div class="app-content flex-grow-1 overflow-auto custom-scrollbar p-3 position-relative z-1" style="background-color: #06080c;">
-        
-        @* ========================================== *@
-        @* TAB: ENTRENAMIENTO (TRACKER FUNCIONAL) *@
-        @* ========================================== *@
         @if (tabActual == "entrenamiento")
         {
             if (cargando)
@@ -68,7 +61,6 @@
             }
             else
             {
-                @* Selector de Día *@
                 <div class="mb-4 fade-in">
                     <label class="form-label text-muted small fw-bold tracking-widest text-uppercase ms-1">Bloque de Entrenamiento</label>
                     <select value="@diaSeleccionado" @onchange="CambiarDia" class="form-select form-select-lg bg-dark border-secondary border-opacity-25 text-white shadow-none fs-6 rounded-4">
@@ -93,7 +85,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="text-white fw-bold mb-0">@index. @ejReal.NombreEjercicio</h5>
                                 </div>
-                                
+
                                 @if (ejOriginal != null)
                                 {
                                     <div class="d-flex gap-3 mb-3">
@@ -101,7 +93,7 @@
                                         <span class="badge bg-dark border border-secondary border-opacity-25 text-cyan px-3 py-2 rounded-pill font-monospace"><i class="bi bi-arrow-repeat me-1"></i> @ejOriginal.Repeticiones Reps</span>
                                     </div>
 
-                                    @if (!string.IsNullOrEmpty(ejOriginal.NotasCoach))
+                                    if (!string.IsNullOrEmpty(ejOriginal.NotasCoach))
                                     {
                                         <div class="notes-box p-3 rounded-3 mb-4">
                                             <p class="text-white-50 small mb-0"><i class="bi bi-info-circle text-primary me-2"></i>@ejOriginal.NotasCoach</p>
@@ -109,7 +101,6 @@
                                     }
                                 }
 
-                                @* ÁREA DE TRACKER (INPUTS Y CHECKS) *@
                                 <div class="tracker-area pt-2">
                                     <div class="d-flex text-muted small fw-bold tracking-widest text-uppercase mb-2 ms-2">
                                         <div style="width: 40px;">Set</div>
@@ -127,17 +118,17 @@
                                             <div class="text-muted fw-bold font-monospace text-center" style="width: 40px; font-size: 1.1rem;">
                                                 @serie.NumeroSerie
                                             </div>
-                                            
+
                                             <div class="flex-grow-1">
                                                 <input type="number" @bind="serie.PesoLibras" disabled="@completada" class="form-control bg-dark border-secondary border-opacity-25 text-white text-center shadow-none font-monospace tracker-input" placeholder="0" />
                                             </div>
-                                            
+
                                             <div class="flex-grow-1">
                                                 <input type="number" @bind="serie.RepeticionesLogradas" disabled="@completada" class="form-control bg-dark border-secondary border-opacity-25 text-white text-center shadow-none font-monospace tracker-input" placeholder="0" />
                                             </div>
-                                            
+
                                             <div style="width: 45px;" class="text-end">
-                                                <button class="btn btn-sm check-btn @(completada ? "btn-success" : "btn-dark border border-secondary border-opacity-50 text-white-50") rounded-3 w-100 h-100 d-flex justify-content-center align-items-center" @onclick="() => ToggleSerie(serieKey)">
+                                                <button type="button" class="btn btn-sm check-btn @(completada ? "btn-success" : "btn-dark border border-secondary border-opacity-50 text-white-50") rounded-3 w-100 h-100 d-flex justify-content-center align-items-center" @onclick="() => ToggleSerie(serieKey)">
                                                     <i class="bi bi-check-lg fs-5"></i>
                                                 </button>
                                             </div>
@@ -153,17 +144,20 @@
                         <label class="form-label text-muted small fw-bold tracking-widest text-uppercase ms-1">Comentarios del día (Opcional)</label>
                         <textarea @bind="entrenamientoDeHoy.ComentariosAtleta" class="form-control bg-dark border-secondary border-opacity-25 text-white shadow-none rounded-4 mb-4" rows="2" placeholder="¿Cómo te sentiste hoy?"></textarea>
 
-                        <button class="btn btn-gradient-primary w-100 rounded-pill py-3 fw-black fs-5 shadow-lg tracking-wide" @onclick="FinalizarEntrenamiento">
+                        @if (mostrarConfirmacion)
+                        {
+                            <div class="alert alert-success rounded-4 mb-3 text-center fw-bold">
+                                @mensajeConfirmacion
+                            </div>
+                        }
+
+                        <button type="button" class="btn btn-gradient-primary w-100 rounded-pill py-3 fw-black fs-5 shadow-lg tracking-wide" @onclick="FinalizarEntrenamiento">
                             <i class="bi bi-trophy-fill me-2 text-dark"></i> FINALIZAR ENTRENAMIENTO
                         </button>
                     </div>
                 }
             }
         }
-
-        @* ========================================== *@
-        @* TAB: CHAT *@
-        @* ========================================== *@
         else if (tabActual == "chat")
         {
             <div class="d-flex flex-column h-100 fade-in pb-4">
@@ -172,7 +166,7 @@
                     {
                         <div class="text-center mt-4"><span class="badge bg-dark border border-secondary border-opacity-25 px-3 py-2 rounded-pill text-white-50 small">Comunícate con tu entrenador</span></div>
                     }
-                    
+
                     @foreach (var msg in chatActual.Historial)
                     {
                         bool esCliente = msg.RolRemitente == "Cliente";
@@ -181,8 +175,9 @@
                                 <div style="line-height: 1.4; font-size: 1rem;">@msg.Texto</div>
                                 <div class="msg-meta text-end mt-1 d-flex justify-content-end align-items-center gap-1 font-monospace" style="font-size: 0.7rem;">
                                     @msg.FechaEnvio.ToString("h:mm tt")
-                                    @if (esCliente) { 
-                                        <i class="bi bi-check2-all ms-1 @(msg.Leido ? "text-primary" : "text-white-50")" style="font-size: 1rem;"></i> 
+                                    @if (esCliente)
+                                    {
+                                        <i class="bi bi-check2-all ms-1 @(msg.Leido ? "text-primary" : "text-white-50")" style="font-size: 1rem;"></i>
                                     }
                                 </div>
                             </div>
@@ -192,8 +187,8 @@
 
                 <div class="input-area mt-3">
                     <div class="input-group shadow-lg rounded-pill p-1 bg-dark border border-secondary border-opacity-50 focus-glow">
-                        <input type="text" class="form-control bg-transparent border-0 text-white shadow-none px-4" 
-                               placeholder="Mensaje..." 
+                        <input type="text" class="form-control bg-transparent border-0 text-white shadow-none px-4"
+                               placeholder="Mensaje..."
                                @bind="nuevoMensajeTexto" @onkeyup="@(e => { if(e.Key == "Enter") EnviarMensaje(); })" />
                         <button class="btn btn-gradient-primary rounded-pill px-4 fw-bold shadow transition-hover" @onclick="EnviarMensaje">
                             <i class="bi bi-send-fill text-dark"></i>
@@ -206,38 +201,33 @@
 </div>
 
 <style>
-    .gymio-mobile-app { 
-        background-color: #06080c; 
+    .gymio-mobile-app {
+        background-color: #06080c;
         font-family: 'Segoe UI', Roboto, sans-serif;
-        margin: -1.5rem; 
-        height: calc(100vh - 3.5rem); 
+        margin: -1.5rem;
+        height: calc(100vh - 3.5rem);
         width: calc(100% + 3rem);
     }
 
-    /* REDUCCIÓN DEL VERDE - Ahora solo en botones clave */
     .btn-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508 !important; border: none; }
     .btn-gradient-primary:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 255, 163, 0.4) !important; }
     .text-primary { color: #00FFA3 !important; }
     .bg-primary { background-color: #00FFA3 !important; }
     .text-cyan { color: #00B8D4 !important; }
 
-    /* TARJETAS Y NOTAS LIMPIAS */
     .premium-card { background: #0f131a; border: 1px solid rgba(255,255,255,0.03) !important; }
     .notes-box { background-color: rgba(255, 255, 255, 0.02); border-left: 3px solid #00FFA3; }
 
-    /* INPUTS DEL TRACKER (Hevy/Strong Style) */
     .tracker-input { font-size: 1.1rem !important; padding: 0.4rem; transition: all 0.2s ease; }
     .tracker-input:focus { background-color: rgba(0, 255, 163, 0.05) !important; border-color: #00FFA3 !important; }
     .tracker-input:disabled { opacity: 0.6; background-color: transparent !important; }
     .check-btn { transition: all 0.2s ease; }
     .check-btn.btn-success { background-color: #00FFA3; border-color: #00FFA3; color: #000; }
 
-    /* CHAT */
     .msg-bubble { max-width: 85%; font-size: 1rem; border-radius: 1.2rem; }
     .entrenador-bubble { background: #121824; color: #e0e4f5; border-bottom-left-radius: 0.2rem; border: 1px solid rgba(255,255,255,0.05); }
     .cliente-propio-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; font-weight: 500; border-bottom-right-radius: 0.2rem; }
 
-    /* ANIMACIONES */
     .fade-in { animation: fadeIn 0.4s ease-in-out; }
     .slide-up { animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); animation-fill-mode: both; }
     @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -245,7 +235,7 @@
 
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-    
+
     .tracking-widest { letter-spacing: 0.15em; }
     .tracking-wide { letter-spacing: 0.05em; }
 </style>
@@ -254,27 +244,23 @@
     private int idClienteActual;
     private string nombreCliente = "";
     private bool cargando = true;
-    private string tabActual = "entrenamiento"; 
-    
-   
+    private string tabActual = "entrenamiento";
     private Rutina? miRutina;
     private string diaSeleccionado = "";
-
-
     private RegistroEntrenamiento entrenamientoDeHoy = new();
     private Dictionary<string, bool> seriesCompletadas = new();
-
-
     private ChatEntrenador chatActual = new();
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
     private int mensajesSinLeer = 0;
+    private string mensajeConfirmacion = "";
+    private bool mostrarConfirmacion = false;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        
+
         if (user.Identity is not null && user.Identity.IsAuthenticated)
         {
             var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -286,20 +272,17 @@
             }
         }
 
-       
         miRutina = await RutinaService.ObtenerRutinaActivaAsync(idClienteActual);
         if (miRutina != null && miRutina.Dias.Any())
         {
             diaSeleccionado = miRutina.Dias.First().NombreDia;
-            PrepararRegistroDeHoy(); 
+            PrepararRegistroDeHoy();
         }
 
-
-        int idEntrenadorAsignado = miRutina?.EntrenadorId ?? 8; 
+        int idEntrenadorAsignado = miRutina?.EntrenadorId ?? 8;
         chatActual = await ChatService.ObtenerOCrearChatAsync(idClienteActual, idEntrenadorAsignado);
         mensajesSinLeer = chatActual.Historial.Count(m => m.RolRemitente == "Entrenador" && !m.Leido);
 
-        // SignalR
         hubConnection = new HubConnectionBuilder()
             .WithUrl(Nav.ToAbsoluteUri("/chathub"))
             .Build();
@@ -319,20 +302,18 @@
         cargando = false;
     }
 
-    // registros entrenamientos
-
     private void CambiarDia(ChangeEventArgs e)
     {
         diaSeleccionado = e.Value?.ToString() ?? "";
+        mostrarConfirmacion = false;
+        mensajeConfirmacion = "";
         PrepararRegistroDeHoy();
     }
 
     private void PrepararRegistroDeHoy()
     {
-        // clear the checks
         seriesCompletadas.Clear();
 
-        
         entrenamientoDeHoy = new RegistroEntrenamiento
         {
             ClienteId = idClienteActual,
@@ -353,11 +334,11 @@
                     Series = new List<RegistroSerie>()
                 };
 
-                // se crean los espacios depende de las sreis
                 for (int i = 1; i <= ej.Series; i++)
                 {
                     regEj.Series.Add(new RegistroSerie { NumeroSerie = i });
                 }
+
                 entrenamientoDeHoy.EjerciciosHechos.Add(regEj);
             }
         }
@@ -365,7 +346,6 @@
 
     private void ToggleSerie(string serieKey)
     {
-      
         if (seriesCompletadas.ContainsKey(serieKey))
             seriesCompletadas[serieKey] = !seriesCompletadas[serieKey];
         else
@@ -374,15 +354,23 @@
 
     private async Task FinalizarEntrenamiento()
     {
-        
-        Console.WriteLine($"Entrenamiento guardado con {entrenamientoDeHoy.EjerciciosHechos.Count} ejercicios completados.");
-        
-        // Lo mandamos al chat para felicitarlo jaja
-        tabActual = "chat"; 
+        try
+        {
+            await RegistroEntrenamientoService.CrearRegistroAsync(entrenamientoDeHoy);
+            mensajeConfirmacion = "Entrenamiento guardado correctamente.";
+            mostrarConfirmacion = true;
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(1200);
+            tabActual = "chat";
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            mensajeConfirmacion = "Ocurrió un error al guardar el entrenamiento.";
+            mostrarConfirmacion = true;
+            await InvokeAsync(StateHasChanged);
+        }
     }
-
-
-    // la logica del char aqui
 
     private async Task AbrirChat()
     {
@@ -402,7 +390,6 @@
         if (actualizoAlgo)
         {
             mensajesSinLeer = 0;
-            // await ChatService.ActualizarChatAsync(chatActual);
             if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
                 await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
         }

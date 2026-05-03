@@ -89,6 +89,16 @@ namespace Gymio.Services
 
         public async Task<bool> RegistrarAsistenciaAsync(int clienteId, bool accesoPermitido)
         {
+            var fechaHoy = DateTime.Today;
+
+
+            var yaAsistio = await _context.Asistencias
+                .AnyAsync(a => a.ClienteId == clienteId && a.FechaHoraEntrada.Date == fechaHoy);
+
+        
+            if (yaAsistio) return false;
+
+
             var asistencia = new Asistencia
             {
                 ClienteId = clienteId,
@@ -118,8 +128,8 @@ namespace Gymio.Services
             var asignacion = await _context.AsignacionesEntrenadores
                 .FirstOrDefaultAsync(a => a.ClienteId == clienteId);
 
-            
-            return asignacion != null ? asignacion.EntrenadorId : 2;
+
+            return asignacion?.EntrenadorId ?? 0;
         }
 
         public async Task<bool> AsignarEntrenadorAsync(int clienteId, int entrenadorId)

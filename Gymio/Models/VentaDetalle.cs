@@ -22,6 +22,11 @@ namespace Gymio.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal PrecioUnitario { get; set; }
 
+     
+        public int? ProductoId { get; set; }
+        [ForeignKey("ProductoId")]
+        public Producto? Producto { get; set; }
+
         [Column(TypeName = "decimal(18,2)")]
         public decimal Subtotal { get; set; }
     }

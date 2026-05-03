@@ -7,5 +7,8 @@ namespace Gymio.Interfaces
         Task<decimal> GetIngresosHoyAsync();
         Task<int> GetTotalVentasMesAsync();
         Task<List<Venta>> GetUltimasVentasAsync(int cantidad);
+        Task<List<VentaDetalle>> GetDetallesVentaAsync(int ventaId);
+        Task<List<Producto>> ObtenerProductosActivosAsync();
+        Task CrearVentaAsync(Venta nuevaVenta);
     }
 }

@@ -11,6 +11,7 @@
 @inject IChatService ChatService
 @inject IClienteService ClienteService
 @inject IRutinaService RutinaService
+@inject IRegistroEntrenamientoService RegistroEntrenamientoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
@@ -248,13 +249,66 @@
                 @* ========================================== *@
                 else
                 {
-                    <div class="h-100 d-flex align-items-center justify-content-center text-white-50 fade-in">
-                        <div class="text-center">
-                            <i class="bi bi-graph-up-arrow display-1 text-cyan opacity-25 mb-4"></i>
-                            <h3 class="fw-bold tracking-wide text-white mb-2">Módulo de Métricas e Hipertrofia</h3>
-                            <p class="text-muted fs-5">Aquí verás los pesos registrados y el progreso semanal.</p>
+                    <div class="h-100 overflow-auto custom-scrollbar fade-in">
+        @if (historialEntrenamientos == null || !historialEntrenamientos.Any())
+        {
+            <div class="h-100 d-flex align-items-center justify-content-center text-white-50">
+                <div class="text-center">
+                    <i class="bi bi-graph-up-arrow display-1 text-cyan opacity-25 mb-4"></i>
+                    <h3 class="fw-bold tracking-wide text-white mb-2">Sin historial aún</h3>
+                    <p class="text-muted fs-5">Este cliente todavía no tiene entrenamientos registrados.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var registro in historialEntrenamientos.OrderByDescending(r => r.FechaEntrenamiento))
+                {
+                    <div class="col-12">
+                        <div class="card glass-panel border-secondary border-opacity-25 rounded-4 shadow-lg">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <h5 class="text-white fw-bold mb-1">@registro.NombreDiaEntrenado</h5>
+                                        <small class="text-white-50">@registro.FechaEntrenamiento.ToString("dd/MM/yyyy h:mm tt")</small>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(registro.ComentariosAtleta))
+                                {
+                                    <div class="mb-3 p-3 rounded-3 bg-dark border border-secondary border-opacity-25">
+                                        <span class="text-muted small d-block mb-1">Comentario del atleta</span>
+                                        <span class="text-white">@registro.ComentariosAtleta</span>
+                                    </div>
+                                }
+
+                                @foreach (var ej in registro.EjerciciosHechos)
+                                {
+                                    <div class="mb-3 p-3 rounded-4 bg-secondary bg-opacity-10 border border-secondary border-opacity-25">
+                                        <h6 class="text-white fw-bold mb-2">@ej.NombreEjercicio</h6>
+
+                                        <div class="row g-2">
+                                            @foreach (var serie in ej.Series)
+                                            {
+                                                <div class="col-12 col-md-4 col-lg-3">
+                                                    <div class="p-2 rounded-3 bg-dark border border-secondary border-opacity-25 text-center">
+                                                        <div class="text-white-50 small">Serie @serie.NumeroSerie</div>
+                                                        <div class="text-primary fw-bold">@serie.PesoLibras lbs</div>
+                                                        <div class="text-white">@serie.RepeticionesLogradas reps</div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
                         </div>
                     </div>
+                }
+            </div>
+        }
+    </div>
                 }
             </div>
         }
@@ -327,6 +381,8 @@
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
     private int idEntrenadorActual;
+    
+    private List<RegistroEntrenamiento> historialEntrenamientos = new();
 
 
     private Rutina rutinaActual = new Rutina();
@@ -368,27 +424,28 @@
 
     private async Task SeleccionarCliente(Cliente cliente)
     {
-        clienteSeleccionado = cliente;
-        chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, idEntrenadorActual);
-        
-       
-        var rutinaDb = await RutinaService.ObtenerRutinaActivaAsync(cliente.Id);
-        if (rutinaDb != null)
-        {
-            rutinaActual = rutinaDb;
-        }
-        else
-        {
+       clienteSeleccionado = cliente;
+    chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, idEntrenadorActual);
 
-            rutinaActual = new Rutina 
-            { 
-                ClienteId = cliente.Id, 
-                EntrenadorId = idEntrenadorActual, 
-                Titulo = "Plan General de Entrenamiento", 
-                Activa = true,
-                FechaInicio = DateTime.Now
-            };
-        }
+    var rutinaDb = await RutinaService.ObtenerRutinaActivaAsync(cliente.Id);
+    if (rutinaDb != null)
+    {
+        rutinaActual = rutinaDb;
+    }
+    else
+    {
+        rutinaActual = new Rutina
+        {
+            ClienteId = cliente.Id,
+            EntrenadorId = idEntrenadorActual,
+            Titulo = "Plan General de Entrenamiento",
+            Activa = true,
+            FechaInicio = DateTime.Now
+        };
+    }
+
+    historialEntrenamientos = await RegistroEntrenamientoService.ObtenerPorClienteAsync(cliente.Id);
+    tabActual = "progreso";
     }
 
     private void AgregarEjercicioTemporal()
