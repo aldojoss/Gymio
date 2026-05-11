@@ -29,9 +29,11 @@ namespace Gymio.Data
     
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Usuario>().HasIndex(u => u.Email).IsUnique();//clave unica  UNIQUE
+            modelBuilder.Entity<Usuario>().HasIndex(u => u.Email).IsUnique();//claves unica  UNIQUE para estos parametros
+            modelBuilder.Entity<Cliente>().HasIndex(c => c.Email).IsUnique();
+            modelBuilder.Entity<Cliente>().HasIndex(c => c.CodigoQR).IsUnique();
 
-          
+
 
             modelBuilder.Entity<CategoriaEgreso>().HasData(
                 new CategoriaEgreso { Id = 1, Nombre = "Planilla" },
@@ -46,7 +48,7 @@ namespace Gymio.Data
     .HasConversion<string>();
 
             //lo que hace esto es que si el ususario tiene egresos registrados
-            //no permita eliminarlo, para evitar asi la famosa eliminacion en cascada 
+            //no permita eliminarlo, para evitar asi la famosa eliminacion en cascada porque egresos tiene una relacion con usuario
             modelBuilder.Entity<Egreso>()
                 .HasOne(e=>e.UsuarioRegistra)
                 .WithMany()

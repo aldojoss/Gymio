@@ -8,17 +8,18 @@ namespace Gymio.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly GymioDbContext _context;
+        private readonly IDbContextFactory<GymioDbContext> _contextFactory;
         private readonly IClienteService _clienteService;
 
-        public AuthService(GymioDbContext context, IClienteService clienteService)
+        public AuthService(IDbContextFactory<GymioDbContext> contextFactory, IClienteService clienteService)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             this._clienteService = clienteService;
         }
 
         public async Task<Usuario?> LoginAsync(string email, string passwordPlana)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             // buscamos si existe un empleado activo con ese correo
             var usuario = await _context.Usuarios
                 .FirstOrDefaultAsync(u => u.Email == email && u.Activo);
@@ -36,6 +37,7 @@ namespace Gymio.Services
 
         public async Task<bool> CrearUsuarioFuerteAsync(Usuario nuevoUsuario, string passwordPlana)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             string correoLimpio = nuevoUsuario.Email.Trim().ToLower();
             nuevoUsuario.Email = correoLimpio;
 
@@ -62,7 +64,8 @@ namespace Gymio.Services
 
         public async Task<LoginResult> AutenticarHibridoAsync(string email, string password, string tipoAcceso)
         {
-           
+            using var _context = await _contextFactory.CreateDbContextAsync();
+
             if (tipoAcceso == "Staff")
             {
                 var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == email && u.Activo);

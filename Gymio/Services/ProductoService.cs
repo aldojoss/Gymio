@@ -7,15 +7,16 @@ namespace Gymio.Services
 {
     public class ProductoService : IProductoService
     {
-        private readonly GymioDbContext _context;
+       private readonly IDbContextFactory<GymioDbContext> _contextFactory;
 
-        public ProductoService(GymioDbContext context)
+        public ProductoService(IDbContextFactory<GymioDbContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
 
         public async Task<List<Producto>> ObtenerProductosAsync(string busqueda = "")
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             var query = _context.Productos.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(busqueda))
@@ -28,12 +29,14 @@ namespace Gymio.Services
 
         public async Task CrearProductoAsync(Producto producto)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             _context.Productos.Add(producto);
             await _context.SaveChangesAsync();
         }
 
         public async Task ActualizarProductoAsync(Producto producto)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             _context.Productos.Update(producto);
             await _context.SaveChangesAsync();
         }

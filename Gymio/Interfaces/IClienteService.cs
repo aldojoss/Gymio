@@ -22,6 +22,9 @@ namespace Gymio.Interfaces
         Task<List<Usuario>> ObtenerEntrenadoresAsync();
         Task<List<Cliente>> BuscarClientesParaSuscripcionAsync(string termino);
 
+        Task<int> GetTotalClientesAsync();
+        Task<int> GetTotalClientesActivosAsync();
+
 
 
     }

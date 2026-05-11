@@ -16,7 +16,9 @@ using System.Security.Claims;
 var builder = WebApplication.CreateBuilder(args);
 
 // configuración de SQL Server
-builder.Services.AddDbContext<GymioDbContext>(options =>
+//lo que se hace aqui es usar el DbContextFactory, que es como un servicio de instancias del dbcontext, para que cada vez que se necesite una instancia del dbcontext, se cree una nueva, lo cual es importante para evitar problemas de concurrencia y para que cada servicio tenga su propia instancia del dbcontext.
+
+builder.Services.AddDbContextFactory<GymioDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GymioSQLConnection")));
 
 // configuración de MongoDB

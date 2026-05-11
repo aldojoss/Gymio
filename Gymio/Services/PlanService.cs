@@ -9,15 +9,16 @@ namespace Gymio.Services
     public class PlanService : IPlanService
     {
 
-        private readonly GymioDbContext _context;
+        private readonly IDbContextFactory<GymioDbContext> _contextFactory;
 
-        public PlanService (GymioDbContext context)
+        public PlanService(IDbContextFactory<GymioDbContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
 
         public async Task<bool> ActualizarPlanAsync(Plan plan)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
 
             var planTrackeado = await _context.Planes.FindAsync(plan.Id);
 
@@ -32,14 +33,15 @@ namespace Gymio.Services
 
         public async Task<bool> CrearPlanAsync(Plan nuevoPlan)
         {
-
-           _context.Planes.Add(nuevoPlan);
+            using var _context = await _contextFactory.CreateDbContextAsync();
+            _context.Planes.Add(nuevoPlan);
             await _context.SaveChangesAsync();
             return true;
         }
 
         public async Task<List<Plan>> ObtenerPlanesAsync()
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             var planes = await  _context.Planes.OrderByDescending(p=>p.Precio).ToListAsync();
             return planes;
         }

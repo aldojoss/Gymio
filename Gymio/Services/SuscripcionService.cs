@@ -7,15 +7,17 @@ namespace Gymio.Services
 {
     public class SuscripcionService : ISuscripcionService
     {
-        private readonly GymioDbContext _context;
+        
+        private readonly IDbContextFactory<GymioDbContext> _contextFactory;
 
-        public SuscripcionService(GymioDbContext context)
+        public SuscripcionService(IDbContextFactory<GymioDbContext> contextFactory)
         {
-            _context = context;
+          _contextFactory= contextFactory;
         }
 
         public async Task<bool> RegistrarSuscripcionAsync(int clienteId, int planId, int usuarioId, string metodoPago)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             var plan = await _context.Planes.FindAsync(planId);
             if (plan == null) return false;
 
@@ -73,6 +75,7 @@ namespace Gymio.Services
 
         public async Task<List<SuscripcionCliente>> ObtenerSuscripcionesRecientesAsync()
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             return await _context.SuscripcionesClientes
                 .Include(s => s.Cliente)
                 .Include(s => s.Plan)
@@ -84,6 +87,7 @@ namespace Gymio.Services
 
         public async Task<(bool Permitido, string Mensaje, SuscripcionCliente? Suscripcion)> ValidarAccesoConQrAsync(string codigoQr)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.CodigoQR == codigoQr);
             if (cliente == null)
             {

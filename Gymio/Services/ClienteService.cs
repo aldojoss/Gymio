@@ -7,21 +7,23 @@ namespace Gymio.Services
 {
     public class ClienteService : IClienteService
     {
-        private readonly GymioDbContext _context;
+        private readonly IDbContextFactory<GymioDbContext> _contextFactory;
 
 
-        public ClienteService(GymioDbContext context)
+        public ClienteService(IDbContextFactory<GymioDbContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
 
         public async Task<int>CargarCantidadClientes()
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             return await _context.Clientes.CountAsync();
         }
 
         public async Task<decimal>CantidadIngresosHoy()
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
           
             return await _context.Ventas.Where(c => c.FechaVenta.Date == DateTime.Today).SumAsync(c => c.Total);
         }
@@ -29,6 +31,7 @@ namespace Gymio.Services
 
         public async Task<bool> RegistrarClienteAsync(Cliente nuevoCliente)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
 
             bool existeEnClientes = await _context.Clientes.AnyAsync(c => c.Email == nuevoCliente.Email);
             bool existeEnUsuarios = await _context.Usuarios.AnyAsync(u => u.Email == nuevoCliente.Email);
@@ -65,6 +68,7 @@ namespace Gymio.Services
 
         public async Task<List<Cliente>> ObtenerClientesAsync(string terminoBusqueda = "")
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
 
             var consulta = _context.Clientes.AsQueryable();
 
@@ -83,12 +87,14 @@ namespace Gymio.Services
         }
 
         public async Task<Cliente?> ObtenerClientePorQRAsync(string codigoQR)
-        {   
+        {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             return await _context.Clientes.FirstOrDefaultAsync(c => c.CodigoQR == codigoQR);
         }
 
         public async Task<bool> RegistrarAsistenciaAsync(int clienteId, bool accesoPermitido)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             var fechaHoy = DateTime.Today;
 
 
@@ -113,6 +119,7 @@ namespace Gymio.Services
 
         public async Task<bool> ActualizarClienteAsync(Cliente cliente)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             var clienteTrackeado = await _context.Clientes.FindAsync(cliente.Id);
 
             if (clienteTrackeado == null) { return false; }
@@ -125,6 +132,7 @@ namespace Gymio.Services
 
         public async Task<int> ObtenerIdEntrenadorAsignadoAsync(int clienteId)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             var asignacion = await _context.AsignacionesEntrenadores
                 .FirstOrDefaultAsync(a => a.ClienteId == clienteId);
 
@@ -134,7 +142,8 @@ namespace Gymio.Services
 
         public async Task<bool> AsignarEntrenadorAsync(int clienteId, int entrenadorId)
         {
-            
+            using var _context = await _contextFactory.CreateDbContextAsync();
+
             var asignacionExistente = await _context.AsignacionesEntrenadores
                 .FirstOrDefaultAsync(a => a.ClienteId == clienteId);
 
@@ -163,11 +172,13 @@ namespace Gymio.Services
 
         public async Task<List<Usuario>> ObtenerEntrenadoresAsync()
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             return await _context.Usuarios.Where(e => e.Rol=="Entrenador").ToListAsync();
         }
 
         public async Task<List<Cliente>> BuscarClientesParaSuscripcionAsync(string termino)
         {
+            using var _context = await _contextFactory.CreateDbContextAsync();
             if (string.IsNullOrWhiteSpace(termino))
                 return new List<Cliente>();
 
@@ -179,7 +190,8 @@ namespace Gymio.Services
 
         public async Task<List<Cliente>> ObtenerClientesPorEntrenadorAsync(int entrenadorId)
         {
-            
+            using var _context = await _contextFactory.CreateDbContextAsync();
+
             var asignaciones = await _context.AsignacionesEntrenadores
                 .Include(a => a.Cliente) 
                 .Where(a => a.EntrenadorId == entrenadorId)
@@ -187,6 +199,18 @@ namespace Gymio.Services
 
             
             return asignaciones.Select(a => a.Cliente).ToList();
+        }
+
+        public async Task<int> GetTotalClientesAsync()
+        {
+            using var _context = await _contextFactory.CreateDbContextAsync();
+            return await _context.Clientes.CountAsync();
+        }
+
+        public async Task<int> GetTotalClientesActivosAsync()
+        {
+            using var _context = await _contextFactory.CreateDbContextAsync();
+            return await _context.Clientes.CountAsync(c => c.Activo);
         }
     }
 }
