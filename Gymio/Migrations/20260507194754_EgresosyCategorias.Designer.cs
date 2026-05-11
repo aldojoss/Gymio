@@ -4,6 +4,7 @@ using Gymio.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Gymio.Migrations
 {
     [DbContext(typeof(GymioDbContext))]
-    partial class GymioDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507194754_EgresosyCategorias")]
+    partial class EgresosyCategorias
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -92,33 +95,6 @@ namespace Gymio.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CategoriasEgresos");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Nombre = "Planilla"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Nombre = "Servicios Básicos"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Nombre = "Inventario"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Nombre = "Mantenimiento"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Nombre = "Otros"
-                        });
                 });
 
             modelBuilder.Entity("Gymio.Models.Cliente", b =>
@@ -169,32 +145,6 @@ namespace Gymio.Migrations
                     b.ToTable("Clientes");
                 });
 
-            modelBuilder.Entity("Gymio.Models.CompraInventario", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CantidadComprada")
-                        .HasColumnType("int");
-
-                    b.Property<int>("EgresoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductoId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EgresoId");
-
-                    b.HasIndex("ProductoId");
-
-                    b.ToTable("ComprasInventario");
-                });
-
             modelBuilder.Entity("Gymio.Models.Egreso", b =>
                 {
                     b.Property<int>("Id")
@@ -202,6 +152,9 @@ namespace Gymio.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CantidadComprada")
+                        .HasColumnType("int");
 
                     b.Property<int>("CategoriaEgresoId")
                         .HasColumnType("int");
@@ -217,6 +170,9 @@ namespace Gymio.Migrations
                     b.Property<decimal>("Monto")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("ProductoId")
+                        .HasColumnType("int");
+
                     b.Property<int>("UsuarioId")
                         .HasColumnType("int");
 
@@ -224,38 +180,11 @@ namespace Gymio.Migrations
 
                     b.HasIndex("CategoriaEgresoId");
 
+                    b.HasIndex("ProductoId");
+
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("Egresos");
-                });
-
-            modelBuilder.Entity("Gymio.Models.PagoPlanilla", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("EgresoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("EntrenadorId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("PeriodoFin")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("PeriodoInicio")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EgresoId");
-
-                    b.HasIndex("EntrenadorId");
-
-                    b.ToTable("PagosPlanilla");
                 });
 
             modelBuilder.Entity("Gymio.Models.Plan", b =>
@@ -368,10 +297,6 @@ namespace Gymio.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("FrecuenciaPago")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<string>("NombreCompleto")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -385,9 +310,6 @@ namespace Gymio.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<decimal?>("SalarioBase")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
@@ -495,25 +417,6 @@ namespace Gymio.Migrations
                     b.Navigation("Cliente");
                 });
 
-            modelBuilder.Entity("Gymio.Models.CompraInventario", b =>
-                {
-                    b.HasOne("Gymio.Models.Egreso", "EgresoGenerado")
-                        .WithMany()
-                        .HasForeignKey("EgresoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Gymio.Models.Producto", "ProductoReabastecido")
-                        .WithMany()
-                        .HasForeignKey("ProductoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("EgresoGenerado");
-
-                    b.Navigation("ProductoReabastecido");
-                });
-
             modelBuilder.Entity("Gymio.Models.Egreso", b =>
                 {
                     b.HasOne("Gymio.Models.CategoriaEgreso", "Categoria")
@@ -522,34 +425,21 @@ namespace Gymio.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Gymio.Models.Producto", "ProductoReabastecido")
+                        .WithMany()
+                        .HasForeignKey("ProductoId");
+
                     b.HasOne("Gymio.Models.Usuario", "UsuarioRegistra")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Categoria");
 
+                    b.Navigation("ProductoReabastecido");
+
                     b.Navigation("UsuarioRegistra");
-                });
-
-            modelBuilder.Entity("Gymio.Models.PagoPlanilla", b =>
-                {
-                    b.HasOne("Gymio.Models.Egreso", "EgresoGenerado")
-                        .WithMany()
-                        .HasForeignKey("EgresoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Gymio.Models.Usuario", "Entrenador")
-                        .WithMany()
-                        .HasForeignKey("EntrenadorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("EgresoGenerado");
-
-                    b.Navigation("Entrenador");
                 });
 
             modelBuilder.Entity("Gymio.Models.SuscripcionCliente", b =>

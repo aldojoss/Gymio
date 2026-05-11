@@ -1,4 +1,5 @@
 ﻿using Gymio.Models;
+using Gymio.Services;
 
 namespace Gymio.Interfaces
 {
@@ -10,5 +11,7 @@ namespace Gymio.Interfaces
         Task<List<VentaDetalle>> GetDetallesVentaAsync(int ventaId);
         Task<List<Producto>> ObtenerProductosActivosAsync();
         Task CrearVentaAsync(Venta nuevaVenta);
+        Task<List<IngresoMensual>> GetIngresosUltimos6MesesAsync();
+        Task<List<decimal>> GetIngresosUltimos7DiasAsync();
     }
 }

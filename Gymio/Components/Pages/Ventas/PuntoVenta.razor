@@ -416,6 +416,7 @@
                     // ProductoId = item.Producto.Id, 
                     Concepto = item.Producto.Nombre,
                     Cantidad = item.Cantidad,
+                    ProductoId = item.Producto.Id,
                     PrecioUnitario = item.Producto.PrecioVenta,
                     Subtotal = item.Subtotal
                 }).ToList()
@@ -423,7 +424,7 @@
 
             await VentaService.CrearVentaAsync(nuevaVenta);
             
-            // Guardamos la venta finalizada para imprimirla
+            // guardamos la venta finalizada para imprimirla
             ultimaVenta = nuevaVenta;
             mostrarRecibo = true; 
             

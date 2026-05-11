@@ -9,6 +9,7 @@ namespace Gymio.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
 
+       
         public int ClienteId { get; set; }
         public DateTime FechaRegistro { get; set; }
 

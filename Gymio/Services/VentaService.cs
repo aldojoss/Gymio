@@ -50,6 +50,37 @@ namespace Gymio.Services
         public async Task<decimal> GetIngresosHoyAsync()
             => await _context.Ventas.Where(v => v.FechaVenta.Date == DateTime.Today).SumAsync(v => v.Total);
 
+        public async Task<List<IngresoMensual>> GetIngresosUltimos6MesesAsync()
+        {
+            
+            var fechaInicio = DateTime.Today.AddMonths(-5);
+            fechaInicio = new DateTime(fechaInicio.Year, fechaInicio.Month, 1); 
+
+            var ventas = await _context.Ventas
+                .Where(v => v.FechaVenta >= fechaInicio)
+                .ToListAsync();
+
+            var reporte = new List<IngresoMensual>();
+
+            for (int i = 0; i < 6; i++)
+            {
+                var mesActual = fechaInicio.AddMonths(i);
+                var totalMes = ventas
+                    .Where(v => v.FechaVenta.Year == mesActual.Year && v.FechaVenta.Month == mesActual.Month)
+                    .Sum(v => v.Total);
+
+                reporte.Add(new IngresoMensual
+                {
+                
+                    Mes = mesActual.ToString("MMM yyyy", new System.Globalization.CultureInfo("es-NI")).ToUpper().Replace(".", ""),
+                    Total = totalMes
+                });
+            }
+
+            return reporte;
+        }
+
+
         public async Task<int> GetTotalVentasMesAsync()
             => await _context.Ventas.CountAsync(v => v.FechaVenta.Month == DateTime.Now.Month);
 
@@ -60,5 +91,35 @@ namespace Gymio.Services
         {
             return await _context.Productos.Where(p => p.Activo&&p.StockActual>0).ToListAsync();
         }
+        public async Task<List<decimal>> GetIngresosUltimos7DiasAsync()
+        {
+           
+            var fechaInicio = DateTime.Today.AddDays(-6);
+
+            var ventas = await _context.Ventas
+                .Where(v => v.FechaVenta >= fechaInicio)
+                .ToListAsync();
+
+            var ingresosPorDia = new List<decimal>();
+
+            for (int i = 0; i < 7; i++)
+            {
+                var diaActual = fechaInicio.AddDays(i);
+    
+                var totalDia = ventas
+                    .Where(v => v.FechaVenta.Date == diaActual)
+                    .Sum(v => v.Total);
+
+                ingresosPorDia.Add(totalDia);
+            }
+
+            return ingresosPorDia;
+        }
     }
+    public class IngresoMensual
+    {
+        public string Mes {  get; set; }
+        public decimal Total { get; set; }
+    }
+
 }

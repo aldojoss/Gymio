@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using MongoDB.Driver;
+using Radzen;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,6 +43,8 @@ builder.Services.AddScoped<IRutinaService, RutinaService>();
 builder.Services.AddScoped<IChatService,ChatService >();
 builder.Services.AddScoped<IRegistroEntrenamientoService, RegistroEntrenamientoService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddScoped<IPlanillaService, PagoPlanillaService>();
+builder.Services.AddRadzenComponents();
 
 builder.Services.AddSignalR();
 

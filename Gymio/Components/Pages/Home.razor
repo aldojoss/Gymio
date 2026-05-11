@@ -99,16 +99,22 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h6 class="text-white fw-bold mb-0 tracking-widest text-uppercase"><i class="bi bi-bar-chart-fill text-primary me-2"></i> Flujo de Ingresos (Últimos 7 días)</h6>
                 </div>
-                <div class="chart-container d-flex align-items-end justify-content-between px-2" style="height: 120px;">
+                
+                @* AJUSTE CLAVE HTML: Le agregamos w-100 y forzamos alineación *@
+                <div class="chart-container d-flex align-items-end justify-content-between px-2 w-100" style="height: 120px; border-bottom: 1px solid rgba(255,255,255,0.1);">
                     @foreach (var alto in alturasGrafico)
                     {
-                        <div class="chart-bar-wrapper d-flex flex-column align-items-center" style="width: 10%;">
-                            <div class="chart-bar bg-gradient-primary rounded-top-2 w-100 transition-hover" style="height: @(alto)%; min-height: 5px;"></div>
+                        <div class="chart-bar-wrapper d-flex flex-column justify-content-end align-items-center h-100" style="width: 10%;">
+                            <div class="chart-bar bg-gradient-primary rounded-top-2 w-100 transition-hover" style="height: @(alto)%; min-height: 5px; display: block;"></div>
                         </div>
                     }
                 </div>
                 <div class="d-flex justify-content-between px-2 mt-2 text-muted font-monospace small" style="font-size: 0.65rem;">
-                    <span>LUN</span><span>MAR</span><span>MIE</span><span>JUE</span><span>VIE</span><span>SAB</span><span>DOM</span>
+                    @* CAMBIADO: Ahora lee el array de C# en lugar de LUN MAR MIE fijo *@
+                    @foreach(var dia in diasSemana)
+                    {
+                        <span>@dia</span>
+                    }
                 </div>
             </div>
 
@@ -265,8 +271,8 @@
     .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); }
     .transition-hover { transition: all 0.3s ease; }
 
-    /* Gráfico CSS */
-    .chart-bar { box-shadow: 0 0 10px rgba(0, 255, 163, 0.2); }
+    /* Gráfico CSS: AJUSTADO PARA EVITAR COLAPSOS */
+    .chart-bar { box-shadow: 0 0 10px rgba(0, 255, 163, 0.2); transition: height 0.5s ease; }
     .chart-bar:hover { filter: brightness(1.2); box-shadow: 0 0 15px rgba(0, 255, 163, 0.5); }
 
     /* Botones de Acción Laterales */
@@ -309,8 +315,9 @@
     private int ventasMes = 0;
     private List<Venta> ultimasVentas = new();
     
-    //este array para el grafico
-    private int[] alturasGrafico = new int[] { 30, 50, 20, 80, 45, 90, 65 };
+    // Arrays para pintar la gráfica en CSS
+    private int[] alturasGrafico = new int[7];
+    private string[] diasSemana = new string[7] { "LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -318,5 +325,28 @@
         ingresosHoy = await VentaService.GetIngresosHoyAsync();
         ventasMes = await VentaService.GetTotalVentasMesAsync();
         ultimasVentas = await VentaService.GetUltimasVentasAsync(5);
+        
+        // Ejecutamos la lógica de la gráfica después de cargar todo
+        await CargarGraficaSemanal();
+    }
+
+    private async Task CargarGraficaSemanal()
+    {
+
+        var ingresosReales = await VentaService.GetIngresosUltimos7DiasAsync();
+
+        decimal maxMonto = ingresosReales.Any() && ingresosReales.Max() > 0 ? ingresosReales.Max() : 1;
+
+
+        for (int i = 0; i < 7; i++)
+        {
+            alturasGrafico[i] = (int)((ingresosReales[i] / maxMonto) * 100);
+            
+
+            if (alturasGrafico[i] < 5) alturasGrafico[i] = 5;
+
+            var dia = DateTime.Today.AddDays(-6 + i);
+            diasSemana[i] = dia.ToString("ddd", new System.Globalization.CultureInfo("es-NI")).ToUpper().Replace(".", "");
+        }
     }
 }

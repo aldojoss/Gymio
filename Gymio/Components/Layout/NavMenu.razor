@@ -67,11 +67,7 @@
                 </NavLink>
             </div>
 
-            <div class="nav-item text-muted mt-2">
-                <div class="nav-link disabled-link">
-                    <i class="bi bi-bar-chart-line-fill nav-icon opacity-50"></i> <span class="opacity-50">Reportes (Pronto)</span>
-                </div>
-            </div>
+            
         </Authorized>
     </AuthorizeView>
 
@@ -103,4 +99,21 @@
             </div>
         </Authorized>
     </AuthorizeView>
+
+    @* ========================================================
+           admin
+           ======================================================== *@
+    <AuthorizeView Roles="Administrador">
+        <Authorized>
+            <div class="nav-category mt-4 text-cyan">Área Técnica</div>
+            <div class="nav-item">
+                <NavLink class="nav-link coach-link" href="reportes">
+                    <i class="bi bi-bar-chart-fill nav-icon"></i> Reportes
+                </NavLink>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
+
+   
 </nav>

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Gymio.Models
 {
@@ -24,7 +25,23 @@ namespace Gymio.Models
 
         public bool Activo { get; set; } = true;
 
+
+
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? SalarioBase { get; set; }
+
+        [MaxLength(20)]
+        public FrecuenciaPago? FrecuenciaPago { get; set; } // "Semanal", "Quincenal", "Mensual"
+
         // un cajero puede registrar muchas ventas 
         public ICollection<Venta> Ventas { get; set; }
+    }
+
+    public enum FrecuenciaPago
+    {
+        Semanal = 1,
+        Quincenal = 2,
+        Mensual = 3
     }
 }

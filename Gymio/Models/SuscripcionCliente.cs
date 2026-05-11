@@ -15,6 +15,7 @@ namespace Gymio.Models
 
         [Required]
         public int PlanId { get; set; }
+
         [ForeignKey("PlanId")]
         public Plan Plan { get; set; }
 
