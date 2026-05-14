@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Gymio.Client/Gymio.Client.csproj" />
+  <Project Path="Gymio/Gymio.csproj" />
+</Solution>

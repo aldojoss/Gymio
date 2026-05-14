@@ -1,0 +1,439 @@
+﻿@page "/entrenadores"
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+
+@using Gymio.Models
+@using Gymio.Interfaces
+@using System.Security.Claims
+
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IClienteService ClienteService
+@inject IAuthService AuthService
+@inject IPlanillaService PlanillaService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<div class="page-container p-4 fade-in">
+    @* --- ALERTA DE ÉXITO GLOBAL --- *@
+    @if (!string.IsNullOrEmpty(mensajeExitoGlobal))
+    {
+        <div class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 text-success py-3 d-flex align-items-center slide-up shadow-sm mb-4 rounded-4" role="alert">
+            <i class="bi bi-check-circle-fill fs-4 me-3"></i>
+            <div>
+                <strong>¡Operación Exitosa!</strong> <br/>
+                <span class="small">@mensajeExitoGlobal</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white ms-auto opacity-50 shadow-none" @onclick="() => mensajeExitoGlobal = string.Empty"></button>
+        </div>
+    }
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-black text-white mb-0">Directorio de Staff</h2>
+            <span class="text-muted small tracking-widest text-uppercase">gestión de entrenadores y empleados</span>
+        </div>
+        <button class="btn btn-gradient rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover" @onclick="AbrirModalNuevo">
+            <i class="bi bi-person-plus-fill me-2"></i> Nuevo Entrenador
+        </button>
+    </div>
+
+    <div class="search-wrapper mb-4">
+        <div class="input-group bg-dark border border-secondary border-opacity-25 rounded-pill overflow-hidden shadow-sm" style="max-width: 500px;">
+            <span class="input-group-text bg-transparent border-0 text-muted ps-4">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="text" class="form-control bg-transparent border-0 text-white shadow-none py-2" 
+                   placeholder="buscar coach por nombre..." 
+                   @bind="busqueda" @bind:event="oninput" @onkeyup="Filtrar" />
+        </div>
+    </div>
+
+    <div class="table-responsive custom-scrollbar pb-3">
+        <table class="table modern-table table-borderless align-middle mb-0" style="min-width: 800px;">
+            <thead>
+                <tr class="text-muted text-uppercase small tracking-widest" style="font-size: 0.75rem;">
+                    <th class="ps-4 pb-3">Entrenador</th>
+                    <th class="pb-3">Contacto</th>
+                    <th class="pb-3">Rol</th>
+                    <th class="text-end pe-4 pb-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (entrenadores == null)
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <div class="spinner-border text-primary mb-3" role="status"></div>
+                            <div>cargando staff...</div>
+                        </td>
+                    </tr>
+                }
+                else if (!entrenadores.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <div class="bg-dark d-inline-block p-4 rounded-circle mb-3 border border-secondary border-opacity-25">
+                                <i class="bi bi-person-badge display-4 text-white-50"></i>
+                            </div>
+                            <h5>No hay entrenadores registrados</h5>
+                            <p class="small">registra uno nuevo para poder asignarlo a los clientes</p>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var coach in entrenadores)
+                    {
+                        <tr class="modern-row slide-up">
+                            <td class="ps-4 py-3 rounded-start-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="avatar-sm bg-gradient-primary text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center fs-5 shadow-sm" style="width: 45px; height: 45px;">
+                                        @(string.IsNullOrEmpty(coach.NombreCompleto) ? "E" : coach.NombreCompleto.Substring(0,1).ToUpper())
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-white" style="font-size: 1.05rem;">@coach.NombreCompleto</div>
+                                        <div class="text-muted small">ID Sistema: #@coach.Id.ToString("D4")</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3">
+                                <div class="text-muted small">
+                                    <i class="bi bi-envelope-fill me-2"></i>
+                                    @(string.IsNullOrEmpty(coach.Email) ? "sin correo asignado" : coach.Email)
+                                </div>
+                            </td>
+                            <td class="py-3">
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3 py-2 fw-normal">
+                                    <i class="bi bi-lightning-charge-fill me-1" style="font-size: 0.6rem; vertical-align: middle;"></i> @coach.Rol
+                                </span>
+                            </td>
+                            <td class="text-end pe-4 py-3 rounded-end-4">
+                                <button class="btn btn-action btn-outline-success rounded-circle transition-hover" title="Pagar Planilla" @onclick="() => AbrirModalPago(coach)">
+                                    <i class="bi bi-cash-stack"></i>
+                                </button>
+                                <button class="btn btn-action btn-outline-warning rounded-circle ms-2 transition-hover" title="editar datos del coach">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-action btn-outline-danger rounded-circle ms-2 transition-hover" title="dar de baja">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="row-spacer"><td colspan="4"></td></tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* MODAL 1: NUEVO COACH *@
+@if (mostrarModalNuevo)
+{
+    <div class="modal fade show d-block fade-in" tabindex="-1" style="background-color: rgba(4, 5, 8, 0.8); backdrop-filter: blur(8px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary border-opacity-25 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 p-4">
+                    <h5 class="modal-title fw-black text-white d-flex align-items-center">
+                        <div class="bg-gradient-primary rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            <i class="bi bi-person-plus-fill text-dark fs-5"></i>
+                        </div>
+                        Registrar Nuevo Coach
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50 shadow-none" @onclick="CerrarModalNuevo"></button>
+                </div>
+                
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(mensajeErrorModal))
+                    {
+                        <div class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger py-2 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeErrorModal
+                        </div>
+                    }
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Nombre Completo</label>
+                            <input type="text" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" placeholder="Ej. Arnold Schwarzenegger" @bind="nuevoCoach.NombreCompleto" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Correo Electrónico</label>
+                            <input type="email" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" placeholder="coach@gymio.com" @bind="nuevoCoach.Email" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Contraseña Temporal</label>
+                            <input type="password" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" placeholder="Asigna una contraseña inicial" @bind="passwordPlano" />
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-top border-secondary border-opacity-25 p-4 bg-body-tertiary" style="background-color: rgba(255,255,255,0.02) !important;">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none fw-bold px-4" @onclick="CerrarModalNuevo">Cancelar</button>
+                    <button type="button" class="btn btn-gradient rounded-pill px-4 py-2 fw-bold shadow-sm" @onclick="GuardarEntrenador">
+                        <i class="bi bi-check2-circle me-2"></i> Confirmar Registro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 2: PAGAR PLANILLA *@
+@if (mostrarModalPago && coachSeleccionado != null)
+{
+    <div class="modal fade show d-block fade-in" tabindex="-1" style="background-color: rgba(4, 5, 8, 0.8); backdrop-filter: blur(8px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary border-opacity-25 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 p-4">
+                    <h5 class="modal-title fw-black text-white d-flex align-items-center">
+                        <div class="bg-success rounded-circle p-2 me-3 d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;">
+                            <i class="bi bi-cash-coin fs-5"></i>
+                        </div>
+                        Pagar a @coachSeleccionado.NombreCompleto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50 shadow-none" @onclick="CerrarModalPago"></button>
+                </div>
+                
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(mensajeErrorPago))
+                    {
+                        <div class="alert alert-warning bg-warning bg-opacity-10 border border-warning border-opacity-25 text-warning py-2 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeErrorPago
+                        </div>
+                    }
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Inicio Periodo</label>
+                            <input type="date" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none" @bind="fechaInicio" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Fin Periodo</label>
+                            <input type="date" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none" @bind="fechaFin" />
+                        </div>
+                        <div class="col-12 mt-4">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Monto a Pagar (C$)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary border-opacity-50 text-success fw-bold">C$</span>
+                                <input type="number" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none fs-5 font-monospace" placeholder="0.00" @bind="montoPagar" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-top border-secondary border-opacity-25 p-4" style="background-color: rgba(255,255,255,0.02) !important;">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none fw-bold px-4" @onclick="CerrarModalPago">Cancelar</button>
+                    <button type="button" class="btn btn-success rounded-pill px-4 py-2 fw-bold shadow-sm text-dark" @onclick="ProcesarPago">
+                        <i class="bi bi-check-lg me-2"></i> Confirmar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .page-container { font-family: 'Segoe UI', Roboto, sans-serif; }
+    .bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); }
+    .text-primary { color: #00FFA3 !important; }
+    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; border: none; }
+    .btn-gradient:hover { background: linear-gradient(135deg, #00e693, #00a5bf); color: #040508; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 255, 163, 0.3) !important; }
+    .modern-table { border-collapse: separate; border-spacing: 0; }
+    .modern-row td { background-color: #0f141e; border-top: 1px solid rgba(255, 255, 255, 0.02); border-bottom: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.2s ease; }
+    .modern-row td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.02); }
+    .modern-row td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.02); }
+    .row-spacer td { height: 10px; padding: 0; background: transparent; border: none; }
+    .modern-row:hover td { background-color: #161d2b; transform: scale(1.005); }
+    
+    .btn-action { width: 35px; height: 35px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-width: 1px; }
+    .btn-outline-warning { color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+    .btn-outline-warning:hover { background-color: #f59e0b; color: #040508; }
+    .btn-outline-danger { color: #f43f5e; border-color: rgba(244, 63, 94, 0.3); }
+    .btn-outline-danger:hover { background-color: #f43f5e; color: #040508; }
+    .btn-outline-success { color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+    .btn-outline-success:hover { background-color: #10b981; color: #040508; }
+    
+    .tracking-widest { letter-spacing: 0.1em; }
+    .transition-hover { transition: all 0.3s ease; }
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    .slide-up { animation: slideUp 0.3s ease-out; }
+    
+    .form-control:focus, .input-group-text { background-color: rgba(255,255,255,0.05) !important; border-color: #00FFA3 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(0, 255, 163, 0.25) !important; }
+    
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 255, 163, 0.2); border-radius: 10px; }
+</style>
+
+@code {
+    private List<Usuario>? entrenadores;
+    private List<Usuario>? entrenadoresRespaldo;
+    private string busqueda = "";
+    private int idCajeroActual;
+
+    @* variables para el nuevo modal  *@
+    private bool mostrarModalNuevo = false;
+    private string mensajeErrorModal = "";
+    private Usuario nuevoCoach = new Usuario { Rol = "Entrenador" };
+    private string passwordPlano = "";
+
+    @* Variables para el pago a coachs *@
+    private bool mostrarModalPago = false;
+    private string mensajeErrorPago = "";
+    private Usuario? coachSeleccionado;
+    private DateTime fechaInicio = DateTime.Today;
+    private DateTime fechaFin = DateTime.Today.AddDays(14);
+    private decimal montoPagar = 0;
+
+    private string mensajeExitoGlobal = "";
+
+    private async Task MostrarExitoTemporal(string mensaje)
+    {
+        mensajeExitoGlobal = mensaje;
+        StateHasChanged(); 
+        
+        await Task.Delay(5000); 
+        
+        mensajeExitoGlobal = "";
+        StateHasChanged(); 
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            idCajeroActual = int.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "1");
+        }
+
+        await CargarEntrenadores();
+    }
+
+    private async Task CargarEntrenadores()
+    {
+        try
+        {
+            entrenadoresRespaldo = await ClienteService.ObtenerEntrenadoresAsync();
+            entrenadores = entrenadoresRespaldo;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"error cargando entrenadores: {ex.Message}");
+            entrenadores = new List<Usuario>();
+        }
+    }
+
+    private void Filtrar()
+    {
+        if (string.IsNullOrWhiteSpace(busqueda))
+        {
+            entrenadores = entrenadoresRespaldo;
+        }
+        else
+        {
+            entrenadores = entrenadoresRespaldo?.Where(e => 
+                e.NombreCompleto != null && e.NombreCompleto.Contains(busqueda, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+    }
+
+    @* --- seccion para el modal de pagos*@
+    private void AbrirModalNuevo()
+    {
+        nuevoCoach = new Usuario { Rol = "Entrenador" };
+        passwordPlano = "";
+        mensajeErrorModal = "";
+        mostrarModalNuevo = true;
+    }
+
+    private void CerrarModalNuevo() => mostrarModalNuevo = false;
+
+    private async Task GuardarEntrenador()
+    {
+        mensajeErrorModal = "";
+
+        if (!string.IsNullOrWhiteSpace(nuevoCoach.NombreCompleto) && 
+            !string.IsNullOrWhiteSpace(nuevoCoach.Email) && 
+            !string.IsNullOrWhiteSpace(passwordPlano))
+        {
+            bool exito = await AuthService.CrearUsuarioFuerteAsync(nuevoCoach, passwordPlano);
+            if (exito)
+            {
+                 mostrarModalNuevo = false;
+                 await CargarEntrenadores();
+                 
+          
+                 await MostrarExitoTemporal($"El coach {nuevoCoach.NombreCompleto} ha sido registrado en el sistema.");
+                 
+                 nuevoCoach = new Usuario();
+                 passwordPlano = "";
+            }
+            else 
+            {
+                 mensajeErrorModal = "Este correo ya está registrado en el sistema. Debe ser único.";
+            }
+        }
+        else
+        {
+            mensajeErrorModal = "Por favor, completá todos los campos requeridos.";
+        }
+    }
+
+    @* ---modal*@
+    private async Task AbrirModalPago(Usuario coach)
+    {
+        coachSeleccionado = coach;
+        montoPagar = 0;
+        mensajeErrorPago = "";
+        mostrarModalPago = true;
+
+        var ultimoFin = await PlanillaService.ObtenerUltimaFechaPagoAsync(coach.Id);
+        if (ultimoFin.HasValue)
+        {
+            fechaInicio = ultimoFin.Value.AddDays(1);
+            fechaFin = fechaInicio.AddDays(14);
+        }
+        else
+        {
+            fechaInicio = DateTime.Today;
+            fechaFin = DateTime.Today.AddDays(15);
+        }
+    }
+
+    private void CerrarModalPago() => mostrarModalPago = false;
+
+    private async Task ProcesarPago()
+    {
+       mensajeErrorPago = "";
+
+        if (montoPagar <= 0)
+        {
+            mensajeErrorPago = "El monto a pagar debe ser mayor a 0 C$.";
+            return;
+        }
+
+        if (coachSeleccionado != null)
+        {
+            bool exito = await PlanillaService.RegistrarPagoAsync(
+                coachSeleccionado.Id, 
+                idCajeroActual, 
+                montoPagar, 
+                fechaInicio, 
+                fechaFin);
+
+            if (exito)
+            {
+                mostrarModalPago = false;
+                
+              
+                await MostrarExitoTemporal($"Se ha registrado correctamente el pago de C$ {montoPagar:N2} a {coachSeleccionado.NombreCompleto}.");
+            }
+            else
+            {
+                mensajeErrorPago = "Error al procesar: Este periodo entra en conflicto o se solapa con un pago anterior.";
+            }
+        }
+    }
+}

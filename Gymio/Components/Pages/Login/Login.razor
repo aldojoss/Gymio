@@ -1,0 +1,172 @@
+﻿@page "/login"
+@layout Gymio.Components.Layout.LoginLayout
+@attribute [AllowAnonymous]
+
+<div class="login-wrapper d-flex align-items-center justify-content-center min-vh-100">
+    
+    @* Orbes de luz ambientales en el fondo *@
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <div class="card login-card border-0 shadow-2xl rounded-4 p-4 p-md-5 position-relative z-1" style="width: 100%; max-width: 420px; background-color: rgba(15, 20, 30, 0.85); backdrop-filter: blur(15px);">
+        
+        <div class="text-center mb-5">
+            <h1 class="fw-black display-4 mb-0 text-white tracking-widest">GYM<span class="text-primary">IO</span></h1>
+            <div class="d-inline-block mt-2 px-3 py-1 rounded-pill bg-primary bg-opacity-10 border border-primary border-opacity-25">
+                <p class="text-primary fw-bold text-uppercase tracking-widest mb-0" style="font-size: 0.75rem;">
+                    <i class="bi bi-shield-lock me-1"></i> Portal de Acceso
+                </p>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger d-flex align-items-center bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 fw-bold py-3 mb-4 fade-in rounded-3">
+                <i class="bi bi-exclamation-octagon-fill me-3 fs-5"></i> 
+                <span class="small tracking-wide">@errorMessage</span>
+            </div>
+        }
+
+        <form action="/api/login" method="post">
+            <AntiforgeryToken />
+
+            @* NUEVO SELECTOR DE ROL ESTILIZADO *@
+            <div class="mb-4">
+                <label class="form-label text-muted fw-bold small tracking-widest text-uppercase">1. Perfil de Usuario</label>
+                <div class="input-group shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-50 focus-glow">
+                    <span class="input-group-text bg-dark border-0 text-muted px-3"><i class="bi bi-person-badge"></i></span>
+                    <select name="tipoAcceso" class="form-select bg-dark border-0 text-white shadow-none py-3" required>
+                        <option value="Socio" selected>Socio / Cliente VIP</option>
+                        <option value="Staff">Personal / Entrenador</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label text-muted fw-bold small tracking-widest text-uppercase">2. Correo Electrónico</label>
+                <div class="input-group shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-50 focus-glow">
+                    <span class="input-group-text bg-dark border-0 text-muted px-3"><i class="bi bi-envelope-at"></i></span>
+                    <input type="email" name="email" class="form-control bg-dark border-0 text-white shadow-none py-3" placeholder="correo@gymio.com" required autofocus />
+                </div>
+            </div>
+
+            <div class="mb-5">
+                <label class="form-label text-muted fw-bold small tracking-widest text-uppercase">3. Contraseña</label>
+                <div class="input-group shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-50 focus-glow">
+                    <span class="input-group-text bg-dark border-0 text-muted px-3"><i class="bi bi-key"></i></span>
+                    <input type="password" name="password" class="form-control bg-dark border-0 text-white shadow-none py-3" placeholder="••••••••" required />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-gradient w-100 py-3 fw-black rounded-pill shadow-sm transition-hover mb-4 d-flex align-items-center justify-content-center">
+                <i class="bi bi-box-arrow-in-right me-2 fs-5"></i> <span>INGRESAR AL SISTEMA</span>
+            </button>
+        </form>
+        
+        <div class="text-center">
+            <small class="text-muted font-monospace opacity-50">GYMIO V2.0 • @DateTime.Now.Year</small>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Fondo base de la página de login */
+    .login-wrapper {
+        background-color: #040508;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Tarjeta principal con borde superior de color */
+    .login-card {
+        border-top: 4px solid #00FFA3 !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Tipografía y acentos */
+    .fw-black { font-weight: 900 !important; }
+    .tracking-widest { letter-spacing: 0.15em; }
+    .tracking-wide { letter-spacing: 0.05em; }
+    
+    .text-primary { 
+        color: #00FFA3 !important; 
+        text-shadow: 0 0 15px rgba(0, 255, 163, 0.3); 
+    }
+
+    /* Botón moderno */
+    .btn-gradient { 
+        background: linear-gradient(135deg, #00FFA3, #00B8D4); 
+        color: #040508; 
+        border: none;
+        letter-spacing: 2px;
+    }
+    .btn-gradient:hover { 
+        background: linear-gradient(135deg, #00e693, #00a5bf); 
+        color: #040508; 
+        transform: translateY(-3px); 
+        box-shadow: 0 10px 25px rgba(0, 255, 163, 0.4) !important; 
+    }
+
+    /* Inputs y Selector */
+    .form-control:focus, .form-select:focus { 
+        background-color: rgba(255,255,255,0.02) !important; 
+        color: white !important; 
+    }
+    .form-control::placeholder { color: rgba(255,255,255,0.2) !important; font-family: monospace; }
+    
+    .focus-glow { transition: all 0.3s ease; }
+    .focus-glow:focus-within {
+        border-color: #00FFA3 !important;
+        box-shadow: 0 0 15px rgba(0, 255, 163, 0.2) !important;
+    }
+
+    /* Color de las opciones del select en modo oscuro */
+    .form-select option {
+        background-color: #0f141e;
+        color: white;
+    }
+
+    /* Orbes de fondo animadas */
+    .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(90px);
+        opacity: 0.15;
+        pointer-events: none;
+    }
+    .orb-1 {
+        top: -10%; left: -10%;
+        width: 400px; height: 400px;
+        background: #00FFA3;
+        animation: float 10s infinite alternate ease-in-out;
+    }
+    .orb-2 {
+        bottom: -10%; right: -10%;
+        width: 500px; height: 500px;
+        background: #00B8D4;
+        animation: float 12s infinite alternate-reverse ease-in-out;
+    }
+
+    /* Animaciones generales */
+    .fade-in { animation: fadeIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
+    .transition-hover { transition: all 0.3s ease; }
+    
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @@keyframes float { 0% { transform: translate(0, 0); } 100% { transform: translate(40px, 40px); } }
+</style>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? error { get; set; }
+    
+    private string errorMessage = "";
+
+    protected override void OnInitialized()
+    {
+        // si hay un mensaje de error en la query string, ps lo asignamos a errorMessage para mostrarlo en la UI
+        if (!string.IsNullOrEmpty(error)) 
+        { 
+            errorMessage = error; 
+        }
+    }
+}

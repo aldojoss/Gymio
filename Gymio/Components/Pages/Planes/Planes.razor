@@ -1,0 +1,293 @@
+﻿@page "/planes"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize (Roles = "Administrador")]
+@rendermode InteractiveServer
+@using Gymio.Models
+@using Gymio.Interfaces
+@inject IPlanService PlanService
+
+<div class="page-container p-4 fade-in">
+    <div class="container-fluid max-w-custom">
+        
+        @* ENCABEZADO *@
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1">
+                        <li class="breadcrumb-item text-muted">Administración</li>
+                        <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Catálogo de Planes</li>
+                    </ol>
+                </nav>
+                <h2 class="fw-black text-white mb-0">Tarifas y Membresías</h2>
+                <span class="text-muted small tracking-widest text-uppercase">Administra los paquetes de acceso al gimnasio</span>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            
+            @* PANEL IZQUIERDO: FORMULARIO *@
+            <div class="col-lg-4">
+                <div class="card border-secondary border-opacity-25 shadow-lg rounded-4 overflow-hidden sticky-top" style="top: 2rem; background-color: #0f141e;">
+                    
+                    @* tira superior decorativa que cambia de color si editas *@
+                    <div class="@(modoEdicion ? "bg-gradient-warning" : "bg-gradient-primary")" style="height: 4px;"></div>
+                    
+                    <div class="card-body p-4 p-md-5">
+                        <h5 class="fw-bold mb-4 text-white d-flex align-items-center">
+                            @if(modoEdicion)
+                            {
+                                <i class="bi bi-pencil-square text-warning me-2 fs-4"></i> <span>Editar Plan</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-plus-circle-fill text-primary me-2 fs-4"></i> <span>Nuevo Plan</span>
+                            }
+                        </h5>
+                        
+                        @if (guardadoExitoso)
+                        {
+                            <div class="alert alert-success d-flex align-items-center mb-4 border border-success border-opacity-25 rounded-3 slide-up" style="background-color: rgba(0, 255, 163, 0.1);" role="alert">
+                                <i class="bi bi-check-circle-fill fs-4 text-success me-3"></i>
+                                <div>
+                                    <h6 class="alert-heading fw-bold mb-0 text-white">@(modoEdicion ? "¡Plan actualizado!" : "¡Plan creado al cien!")</h6>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Nombre de la Membresía</label>
+                            <input type="text" class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" 
+                                   placeholder="Ej: Mensualidad VIP..." @bind="planActual.Nombre" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Precio</label>
+                            <div class="input-group shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-50">
+                                <span class="input-group-text bg-dark border-0 text-muted px-3 fw-bold">C$</span>
+                                <input type="number" step="0.01" class="form-control bg-dark border-0 text-white shadow-none py-2" 
+                                       placeholder="0.00" @bind="planActual.Precio" />
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Duración</label>
+                            <div class="input-group shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-50">
+                                <input type="number" class="form-control bg-dark border-0 text-white shadow-none py-2" 
+                                       placeholder="Ej: 30" @bind="planActual.DuracionDias" />
+                                <span class="input-group-text bg-dark border-0 text-muted px-3 fw-bold">días</span>
+                            </div>
+                        </div>
+
+                        @if (modoEdicion)
+                        {
+                            <div class="form-check form-switch p-3 rounded-3 border border-secondary border-opacity-25 mb-4 slide-up" style="background-color: rgba(255,255,255,0.02);">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="estadoPlan" @bind="planActual.Activo" style="transform: scale(1.3);">
+                                <label class="form-check-label fw-bold text-white mt-1" for="estadoPlan">Plan Activo</label>
+                                <div class="small text-muted ms-5">Si lo apagas, ya no saldrá para nuevas ventas.</div>
+                            </div>
+                        }
+
+                        <div class="d-flex flex-column gap-2 mt-2">
+                            <button class="btn @(modoEdicion ? "btn-gradient-warning" : "btn-gradient") fw-bold py-2 rounded-pill shadow-sm transition-hover border-0 d-flex align-items-center justify-content-center" @onclick="GuardarPlan">
+                                <i class="bi bi-floppy-fill me-2"></i> @(modoEdicion ? "Actualizar Tarifa" : "Guardar Tarifa")
+                            </button>
+                            
+                            @if (modoEdicion)
+                            {
+                                <button class="btn btn-outline-secondary py-2 rounded-pill fw-bold transition-hover" @onclick="CancelarEdicion">
+                                    Cancelar Edición
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* PANEL DERECHO: GRID DE PLANES *@
+            <div class="col-lg-8">
+                <div class="row g-4">
+                    @if (listaPlanes == null)
+                    {
+                        <div class="col-12 text-center py-5 text-muted fade-in">
+                            <div class="spinner-border text-primary mb-3" role="status"></div>
+                            <div class="tracking-widest text-uppercase small fw-bold">Cargando catálogo...</div>
+                        </div>
+                    }
+                    else if (!listaPlanes.Any())
+                    {
+                        <div class="col-12 text-center py-5 fade-in">
+                            <div class="bg-dark d-inline-flex p-4 rounded-circle mb-3 border border-secondary border-opacity-25">
+                                <i class="bi bi-tags-fill display-4 text-white-50"></i>
+                            </div>
+                            <h5 class="fw-bold text-white mb-1">Catálogo Vacío</h5>
+                            <p class="text-muted small">Crea tu primera membresía usando el formulario de la izquierda.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var plan in listaPlanes)
+                        {
+                            <div class="col-md-6 slide-up">
+                                <div class="card plan-card border-0 rounded-4 h-100 transition-hover position-relative overflow-hidden" style="background: linear-gradient(135deg, #0f141e, #161d2b);">
+                                    
+                                    @* Borde decorativo invisible que brilla en hover *@
+                                    <div class="card-border-glow"></div>
+
+                                    <div class="card-body p-4 d-flex flex-column position-relative z-1">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h4 class="fw-black text-white mb-0 pe-2">@plan.Nombre</h4>
+                                            @if(plan.Activo) 
+                                            { 
+                                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill border border-success border-opacity-25 shadow-sm">
+                                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.4rem; vertical-align: middle;"></i> Activo
+                                                </span> 
+                                            }
+                                            else 
+                                            { 
+                                                <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill border border-danger border-opacity-25 shadow-sm">
+                                                    <i class="bi bi-circle-fill me-1" style="font-size: 0.4rem; vertical-align: middle;"></i> Inactivo
+                                                </span> 
+                                            }
+                                        </div>
+                                        
+                                        <h1 class="fw-black text-primary mb-4 display-6">C$@plan.Precio.ToString("0.00")</h1>
+                                        
+                                        <div class="rounded-4 p-3 mt-auto mb-4 border border-secondary border-opacity-25 info-box">
+                                            <div class="d-flex align-items-center">
+                                                <div class="icon-box bg-dark rounded-circle d-flex align-items-center justify-content-center text-muted me-3" style="width: 45px; height: 45px;">
+                                                    <i class="bi bi-clock-history fs-5"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="small text-muted fw-bold text-uppercase tracking-widest" style="font-size: 0.7rem;">Vigencia del Pase</div>
+                                                    <div class="fw-bold text-white">@plan.DuracionDias días de acceso</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-outline-info w-100 rounded-pill fw-bold transition-hover d-flex align-items-center justify-content-center py-2" @onclick="() => PrepararEdicion(plan)">
+                                            <i class="bi bi-pencil me-2"></i> Editar Características
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* variables y base */
+    .page-container { font-family: 'Segoe UI', Roboto, sans-serif; }
+    .max-w-custom { max-width: 1400px; margin: 0 auto; }
+    .fw-black { font-weight: 900 !important; }
+    .tracking-widest { letter-spacing: 0.1em; }
+    
+    /* Gradientes */
+    .bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); }
+    .bg-gradient-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .text-primary { color: #00FFA3 !important; }
+    
+    /* Botones */
+    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; }
+    .btn-gradient:hover { background: linear-gradient(135deg, #00e693, #00a5bf); color: #040508; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 255, 163, 0.3) !important; }
+    
+    .btn-gradient-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: #040508; }
+    .btn-gradient-warning:hover { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #040508; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3) !important; }
+
+    .btn-outline-info { color: #00B8D4; border-color: rgba(0, 184, 212, 0.5); }
+    .btn-outline-info:hover { background-color: #00B8D4; color: #040508; border-color: #00B8D4; box-shadow: 0 4px 15px rgba(0, 184, 212, 0.3) !important; }
+
+    /* Inputs */
+    .form-control:focus { background-color: rgba(255,255,255,0.05) !important; border-color: #00FFA3 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(0, 255, 163, 0.25) !important; }
+    .form-control::placeholder { color: #6c757d !important; opacity: 0.6; }
+    .form-switch .form-check-input:checked { background-color: #00FFA3; border-color: #00FFA3; }
+
+    /* Tarjetas de Plan */
+    .plan-card { border: 1px solid rgba(255,255,255,0.05) !important; }
+    .card-border-glow {
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        border-radius: inherit;
+        border: 2px solid transparent;
+        transition: border-color 0.3s ease;
+        pointer-events: none;
+    }
+    .plan-card:hover .card-border-glow { border-color: rgba(0, 255, 163, 0.5); box-shadow: inset 0 0 20px rgba(0, 255, 163, 0.1); }
+    .info-box { background-color: rgba(0, 0, 0, 0.2); }
+
+    /* Animaciones y utilidades */
+    .transition-hover { transition: all 0.3s ease; }
+    .transition-hover:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.4) !important; }
+    
+    .fade-in { animation: fadeIn 0.4s ease-in-out; }
+    .slide-up { animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
+    
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    private Plan planActual = new Plan { Activo = true };
+    private List<Plan>? listaPlanes;
+    private bool guardadoExitoso = false;
+    private bool modoEdicion = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarPlanes();
+    }
+
+    private async Task CargarPlanes()
+    {
+        listaPlanes = await PlanService.ObtenerPlanesAsync();
+    }
+
+    private void PrepararEdicion(Plan plan)
+    {
+        planActual = new Plan
+        {
+            Id = plan.Id,
+            Nombre = plan.Nombre,
+            Precio = plan.Precio,
+            DuracionDias = plan.DuracionDias,
+            Activo = plan.Activo
+        };
+        modoEdicion = true;
+    }
+
+    private void CancelarEdicion()
+    {
+        planActual = new Plan { Activo = true };
+        modoEdicion = false;
+    }
+
+    private async Task GuardarPlan()
+    {
+        if (!string.IsNullOrWhiteSpace(planActual.Nombre) && planActual.Precio >= 0 && planActual.DuracionDias > 0)
+        {
+            bool exito = false;
+
+            if (modoEdicion)
+            {
+                exito = await PlanService.ActualizarPlanAsync(planActual);
+            }
+            else
+            {
+                exito = await PlanService.CrearPlanAsync(planActual);
+            }
+
+            if (exito)
+            {
+                guardadoExitoso = true;
+                CancelarEdicion(); // se resetea el form
+                await CargarPlanes();
+                StateHasChanged();
+                await Task.Delay(3000);
+                guardadoExitoso = false;
+                StateHasChanged();
+            }
+        }
+    }
+}

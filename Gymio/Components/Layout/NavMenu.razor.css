@@ -1,0 +1,242 @@
+/* ========================================================
+   1. FUNCIONALIDAD BLAZOR (Tu estructura responsiva original)
+   ======================================================== */
+.navbar-toggler {
+    appearance: none;
+    cursor: pointer;
+    width: 3.5rem;
+    height: 2.5rem;
+    color: white;
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
+}
+
+    .navbar-toggler:checked {
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+
+.top-row {
+    min-height: 3.5rem;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.nav-scrollable {
+    display: none;
+}
+
+.navbar-toggler:checked ~ .nav-scrollable {
+    display: block;
+}
+
+@media (min-width: 641px) {
+    .navbar-toggler {
+        display: none;
+    }
+
+    .nav-scrollable {
+        display: block;
+        height: calc(100vh - 3.5rem);
+        overflow-y: auto;
+    }
+}
+
+/* Alineación base para los íconos CORREGIDA */
+.bi {
+    font-size: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 14px;
+    margin-bottom: 0;
+    /* Se eliminaron height, width fijos y top negativo para que flexbox los centre bien */
+}
+
+/* ========================================================
+   2. ESTÉTICA "CYBER-MINT" GYMIO (Colores y Animaciones)
+   ======================================================== */
+:host {
+    background-color: #040508; /* Fondo oscuro premium */
+}
+
+.navbar-brand {
+    font-size: 1.2rem;
+    font-weight: 900 !important;
+    letter-spacing: -1px;
+    color: #ffffff !important;
+}
+
+/* El logo "IO" en verde neón */
+.text-primary {
+    color: #00FFA3 !important;
+    text-shadow: 0 0 10px rgba(0, 255, 163, 0.4);
+}
+
+/* Etiquetas separadoras */
+.nav-category {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: #64748B;
+    letter-spacing: 2px;
+    padding: 0 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+    .nav-category.text-cyan {
+        color: #00B8D4 !important;
+    }
+
+    .nav-category.text-purple {
+        color: #8B5CF6 !important;
+    }
+
+.nav-item {
+    font-size: 0.9rem;
+    padding-bottom: 0.2rem;
+}
+
+    .nav-item:first-of-type {
+        padding-top: 1rem;
+    }
+
+    .nav-item:last-of-type {
+        padding-bottom: 1rem;
+    }
+
+    /* Enlaces base unificados CORREGIDOS */
+    .nav-item ::deep .nav-link {
+        color: #94A3B8;
+        background: none;
+        border: none;
+        border-radius: 4px;
+        display: flex;
+        align-items: center; /* Centrado vertical perfecto */
+        padding: 0.85rem 1rem; /* Damos volumen con padding, no con height */
+        width: 100%;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        border-left: 3px solid transparent;
+        text-decoration: none;
+    }
+
+        /* ====== A. EFECTOS GENERALES (CYBER MINT) ====== */
+        .nav-item ::deep .nav-link:hover:not(.coach-link):not(.vip-link):not(.disabled-link) {
+            background-color: rgba(0, 255, 163, 0.08);
+            color: #ffffff;
+            transform: translateX(8px);
+            border-left: 3px solid #00FFA3;
+        }
+
+        .nav-item ::deep .nav-link:hover .bi {
+            transform: scale(1.1);
+            color: #00FFA3;
+            text-shadow: 0 0 10px rgba(0, 255, 163, 0.5);
+            transition: transform 0.3s ease, text-shadow 0.3s ease;
+        }
+
+    .nav-item ::deep a.active:not(.coach-link):not(.vip-link) {
+        background: linear-gradient(90deg, rgba(0, 255, 163, 0.1) 0%, transparent 100%);
+        color: #00FFA3 !important;
+        font-weight: 700;
+        border-left: 3px solid #00FFA3;
+        text-shadow: 0 0 10px rgba(0, 255, 163, 0.3);
+    }
+
+        .nav-item ::deep a.active:not(.coach-link):not(.vip-link) .bi {
+            color: #00FFA3 !important;
+            text-shadow: 0 0 10px rgba(0, 255, 163, 0.3);
+        }
+
+    /* ====== B. ÁREA TÉCNICA (CIAN NEÓN) ====== */
+    .nav-item ::deep .nav-link.coach-link:hover {
+        background-color: rgba(0, 184, 212, 0.08);
+        color: #ffffff;
+        transform: translateX(8px);
+        border-left: 3px solid #00B8D4;
+    }
+
+        .nav-item ::deep .nav-link.coach-link:hover .bi {
+            color: #00B8D4;
+            text-shadow: 0 0 10px rgba(0, 184, 212, 0.5);
+        }
+
+    .nav-item ::deep a.active.coach-link {
+        background: linear-gradient(90deg, rgba(0, 184, 212, 0.1) 0%, transparent 100%);
+        color: #00B8D4 !important;
+        font-weight: 700;
+        border-left: 3px solid #00B8D4;
+        text-shadow: 0 0 10px rgba(0, 184, 212, 0.3);
+    }
+
+        .nav-item ::deep a.active.coach-link .bi {
+            color: #00B8D4 !important;
+            text-shadow: 0 0 10px rgba(0, 184, 212, 0.3);
+        }
+
+    /* ====== C. PORTAL VIP (PÚRPURA ELÉCTRICO) ====== */
+    .nav-item ::deep .nav-link.vip-link:hover {
+        background-color: rgba(139, 92, 246, 0.08);
+        color: #ffffff;
+        transform: translateX(8px);
+        border-left: 3px solid #8B5CF6;
+    }
+
+        .nav-item ::deep .nav-link.vip-link:hover .bi {
+            color: #8B5CF6;
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+        }
+
+    .nav-item ::deep a.active.vip-link {
+        background: linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+        color: #8B5CF6 !important;
+        font-weight: 700;
+        border-left: 3px solid #8B5CF6;
+        text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+    }
+
+        .nav-item ::deep a.active.vip-link .bi {
+            color: #8B5CF6 !important;
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+
+/* ====== EFECTO PULSO PARA CONTROL DE ACCESO ====== */
+.pulse-access {
+    position: relative;
+}
+
+    .pulse-access:after {
+        content: '';
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 8px;
+        background-color: #00FFA3;
+        border-radius: 50%;
+        animation: pulse-dot 2s infinite;
+        box-shadow: 0 0 8px #00FFA3;
+    }
+
+@keyframes pulse-dot {
+    0% {
+        transform: translateY(-50%) scale(0.9);
+        opacity: 1;
+    }
+
+    70% {
+        transform: translateY(-50%) scale(2.5);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(-50%) scale(0.9);
+        opacity: 0;
+    }
+}
+
+.disabled-link {
+    cursor: not-allowed;
+}

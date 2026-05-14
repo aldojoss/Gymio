@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["Gymio.styles.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+
+<body>
+    <Routes />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDFlIhLL-l8D1GQP_RYiRkp0gfJs-EbUc",
+            authDomain: "gymio-raj123.firebaseapp.com",
+            projectId: "gymio-raj123",
+            storageBucket: "gymio-raj123.firebasestorage.app",
+            messagingSenderId: "981785553209",
+            appId: "1:981785553209:web:cda16fe9039385287360e8",
+            measurementId: "G-VJCK93SW0X"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+
+        window.obtenerTokenFCM = async () => {
+            try {
+                console.log('Solicitando permiso para notificaciones...');
+                const permission = await Notification.requestPermission();
+                
+                if (permission === 'granted') {
+                    console.log('Permiso concedido. Obteniendo token...');
+                    const token = await getToken(messaging);
+                    
+                    if (token) {
+                        console.log('FCM Token obtenido:', token);
+                        return token;
+                    } else {
+                        console.log('No se pudo obtener el token. Revisa la configuración.');
+                        return null;
+                    }
+                } else {
+                    console.log('El usuario denegó el permiso para notificaciones.');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error al obtener el FCM token:', error);
+                return null;
+            }
+        };
+    </script>
+</body>
+
+</html>

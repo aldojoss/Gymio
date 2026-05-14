@@ -1,0 +1,195 @@
+﻿@page "/nuevo-cliente"
+@attribute [Authorize (Roles = "Administrador,Empleado")]
+@rendermode InteractiveServer
+@using Gymio.Models
+@using Gymio.Services
+@using Gymio.Interfaces
+@inject IClienteService ClienteService
+
+<div class="page-container p-4 fade-in">
+    <div class="container-fluid max-w-custom">
+        
+        @* encabezado moderno *@
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1">
+                        <li class="breadcrumb-item text-muted">Administración</li>
+                        <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Nuevo Socio</li>
+                    </ol>
+                </nav>
+                <h2 class="fw-black text-white mb-0">Registro de Membresía</h2>
+            </div>
+            
+            <a href="/clientes" class="btn btn-outline-secondary rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover">
+                <i class="bi bi-arrow-left me-2"></i> Volver al Directorio
+            </a>
+        </div>
+
+        <div class="row g-4">
+            @* PANEL IZQUIERDO: FORMULARIO *@
+            <div class="col-lg-8">
+                <div class="card border-secondary border-opacity-25 shadow-lg rounded-4 overflow-hidden h-100" style="background-color: #0f141e;">
+                    
+                    @* tira superior decorativa *@
+                    <div class="bg-gradient-primary" style="height: 4px;"></div>
+                    
+                    <div class="card-body p-4 p-md-5">
+                        
+                        @if (registroExitoso)
+                        {
+                            <div class="alert alert-success d-flex align-items-center mb-4 border border-success border-opacity-25 rounded-3 slide-up" style="background-color: rgba(0, 255, 163, 0.1);" role="alert">
+                                <i class="bi bi-check-circle-fill fs-3 text-success me-3"></i>
+                                <div>
+                                    <h6 class="alert-heading fw-bold mb-1 text-white">¡Socio registrado al cien!</h6>
+                                    <small class="text-white-50">Los datos están en SQL Server y el código QR VIP ya fue generado.</small>
+                                </div>
+                            </div>
+                        }
+
+                        <h5 class="fw-bold text-white mb-4 d-flex align-items-center">
+                            <i class="bi bi-person-lines-fill text-primary me-2"></i> Datos Personales
+                        </h5>
+                        
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Nombres</label>
+                                <input type="text" class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3"
+                                       placeholder="Ej. Aldo Josué" @bind="clienteNuevo.Nombre" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Apellidos</label>
+                                <input type="text" class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3"
+                                       placeholder="Ej. Avilés" @bind="clienteNuevo.Apellido" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Correo Electrónico</label>
+                                <div class="input-group shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-50">
+                                    <span class="input-group-text bg-dark border-0 text-muted px-3"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" class="form-control bg-dark border-0 text-white shadow-none py-2"
+                                           placeholder="correo@gymio.com" @bind="clienteNuevo.Email" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Teléfono / Celular</label>
+                                <div class="input-group shadow-sm rounded-3 overflow-hidden border border-secondary border-opacity-50">
+                                    <span class="input-group-text bg-dark border-0 text-muted px-3"><i class="bi bi-telephone"></i></span>
+                                    <input type="tel" class="form-control bg-dark border-0 text-white shadow-none py-2"
+                                           placeholder="8888-8888" @bind="clienteNuevo.Telefono" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-4 border-top border-secondary border-opacity-25 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                            <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i> El QR se genera al completar el registro.</p>
+                            <button class="btn btn-gradient rounded-pill px-5 py-2 fw-bold shadow-sm transition-hover" @onclick="ProcesarRegistro" disabled="@registroExitoso">
+                                @if(registroExitoso) { 
+                                    <span><i class="bi bi-check2"></i> Registrado</span> 
+                                } else { 
+                                    <span>Crear Membresía</span> 
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* PANEL DERECHO: TARJETA VIP / QR *@
+            <div class="col-lg-4">
+                <div class="card border-0 rounded-4 overflow-hidden h-100 shadow-lg position-relative" style="background: linear-gradient(135deg, #0f141e, #161d2b);">
+                    
+                    @* detalles decorativos de la tarjeta *@
+                    <div class="position-absolute top-0 end-0 p-3 opacity-25">
+                        <i class="bi bi-fingerprint display-1 text-white"></i>
+                    </div>
+                    
+                    <div class="card-body p-4 p-md-5 d-flex flex-column justify-content-between position-relative z-1">
+            
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="fw-black fs-4 text-white tracking-widest">GYM<span class="text-primary">IO</span></div>
+                            <span class="badge bg-white bg-opacity-10 text-white rounded-pill px-3 py-2 border border-white border-opacity-25 shadow-sm">
+                                <i class="bi bi-star-fill text-warning me-1"></i> SOCIO
+                            </span>
+                        </div>
+            
+                        <div class="bg-dark rounded-4 p-4 mx-auto mb-5 shadow-lg d-flex flex-column align-items-center justify-content-center border border-secondary border-opacity-25" style="width: 220px; height: 220px; position: relative;">
+                            
+                            @* marco de escaner *@
+                            <div class="position-absolute top-0 start-0 w-100 h-100 rounded-4" style="border: 2px dashed rgba(0, 255, 163, 0.3); pointer-events: none; margin: -5px;"></div>
+
+                            @if (string.IsNullOrEmpty(clienteNuevo.CodigoQR))
+                            {
+                                <div class="text-center slide-up">
+                                    <div class="rounded-circle bg-body-secondary p-3 d-inline-block mb-3" style="background-color: rgba(255,255,255,0.05) !important;">
+                                        <i class="bi bi-qr-code-scan display-4 text-muted"></i>
+                                    </div>
+                                    <p class="mb-0 small fw-bold text-muted tracking-widest text-uppercase">Pendiente</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mb-3 slide-up">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=@clienteNuevo.CodigoQR"
+                                         alt="Código QR del Socio"
+                                         class="img-fluid rounded shadow-sm border border-2 border-primary bg-white p-1"
+                                         style="width: 130px; height: 130px;" />
+                                </div>
+    
+                                <div class="text-primary fw-bold mb-2 small font-monospace tracking-widest bg-primary bg-opacity-10 px-2 py-1 rounded">
+                                    @clienteNuevo.CodigoQR
+                                </div>
+                            }
+                        </div>
+            
+                        <div class="mt-auto p-3 rounded-3" style="background-color: rgba(255,255,255,0.03);">
+                            <p class="text-muted small mb-1 text-uppercase tracking-widest">Titular de la membresía</p>
+                            <h5 class="fw-bold text-white mb-0 text-truncate">
+                                @(string.IsNullOrEmpty(clienteNuevo.Nombre) ? "Sin Datos" : clienteNuevo.Nombre + " " + clienteNuevo.Apellido)
+                            </h5>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* variables y base sin forzar fondo negro ni min-height */
+    .page-container { font-family: 'Segoe UI', Roboto, sans-serif; }
+    .max-w-custom { max-width: 1400px; margin: 0 auto; }
+    .bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); }
+    .text-primary { color: #00FFA3 !important; }
+    
+    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; border: none; }
+    .btn-gradient:hover { background: linear-gradient(135deg, #00e693, #00a5bf); color: #040508; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 255, 163, 0.3) !important; }
+
+    /* inputs y selects modernos */
+    .form-control:focus { background-color: rgba(255,255,255,0.05) !important; border-color: #00FFA3 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(0, 255, 163, 0.25) !important; }
+    .form-control::placeholder { color: #6c757d !important; opacity: 0.6; }
+
+    /* utilidades */
+    .tracking-widest { letter-spacing: 0.1em; }
+    .transition-hover { transition: all 0.3s ease; }
+    .fade-in { animation: fadeIn 0.4s ease-in-out; }
+    .slide-up { animation: slideUp 0.4s ease-out; }
+    
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+@code {
+    private Cliente clienteNuevo = new Cliente();
+    private bool registroExitoso = false;
+
+    private async Task ProcesarRegistro()
+    {
+        bool exito = await ClienteService.RegistrarClienteAsync(clienteNuevo);
+        if (exito)
+        {
+            registroExitoso = true;
+            StateHasChanged();
+        }
+    }
+}
