@@ -1,10 +1,12 @@
-﻿@page "/nuevo-cliente"
+@page "/nuevo-cliente"
 @attribute [Authorize (Roles = "Administrador,Empleado")]
 @rendermode InteractiveServer
 @using Gymio.Models
 @using Gymio.Services
 @using Gymio.Interfaces
 @inject IClienteService ClienteService
+@inject IProfileImageService ProfileImageService
+@inject IJSRuntime JS
 
 <div class="page-container p-4 fade-in">
     <div class="container-fluid max-w-custom">
@@ -47,6 +49,14 @@
                             </div>
                         }
 
+                        @if (!string.IsNullOrEmpty(mensajeError))
+                        {
+                            <div class="alert alert-danger d-flex align-items-center mb-4 border border-danger border-opacity-25 rounded-3 slide-up" style="background-color: rgba(244, 63, 94, 0.1);" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill fs-4 text-danger me-3"></i>
+                                <div class="small text-danger fw-bold">@mensajeError</div>
+                            </div>
+                        }
+
                         <h5 class="fw-bold text-white mb-4 d-flex align-items-center">
                             <i class="bi bi-person-lines-fill text-primary me-2"></i> Datos Personales
                         </h5>
@@ -76,6 +86,31 @@
                                     <span class="input-group-text bg-dark border-0 text-muted px-3"><i class="bi bi-telephone"></i></span>
                                     <input type="tel" class="form-control bg-dark border-0 text-white shadow-none py-2"
                                            placeholder="8888-8888" @bind="clienteNuevo.Telefono" />
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Foto del Socio</label>
+                                <div id="foto-cliente-nuevo-drop" class="upload-zone rounded-4 p-3 d-flex flex-column flex-md-row align-items-md-center gap-3">
+                                    <div class="profile-preview">
+                                        @if (!string.IsNullOrEmpty(fotoPreviewUrl))
+                                        {
+                                            <img src="@fotoPreviewUrl" alt="Vista previa de la foto del socio" />
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-person-circle"></i>
+                                        }
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <InputFile id="foto-cliente-nuevo-input" OnChange="SeleccionarFotoCliente" accept="image/png,image/jpeg,image/webp" class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none" />
+                                        <small class="text-muted d-block mt-2">
+                                            Se guardará optimizada en JPG. Máximo 6 MB. También podés arrastrar o pegar la foto aquí.
+                                            @if (!string.IsNullOrEmpty(nombreFotoCliente))
+                                            {
+                                                <span class="text-primary fw-bold ms-1">@nombreFotoCliente</span>
+                                            }
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -142,10 +177,24 @@
                         </div>
             
                         <div class="mt-auto p-3 rounded-3" style="background-color: rgba(255,255,255,0.03);">
-                            <p class="text-muted small mb-1 text-uppercase tracking-widest">Titular de la membresía</p>
-                            <h5 class="fw-bold text-white mb-0 text-truncate">
-                                @(string.IsNullOrEmpty(clienteNuevo.Nombre) ? "Sin Datos" : clienteNuevo.Nombre + " " + clienteNuevo.Apellido)
-                            </h5>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="profile-preview profile-preview-sm">
+                                    @if (!string.IsNullOrEmpty(fotoPreviewUrl) || !string.IsNullOrEmpty(clienteNuevo.FotoUrl))
+                                    {
+                                        <img src="@(fotoPreviewUrl ?? clienteNuevo.FotoUrl)" alt="Foto del socio" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle"></i>
+                                    }
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-muted small mb-1 text-uppercase tracking-widest">Titular de la membresía</p>
+                                    <h5 class="fw-bold text-white mb-0 text-truncate">
+                                        @(string.IsNullOrEmpty(clienteNuevo.Nombre) ? "Sin Datos" : clienteNuevo.Nombre + " " + clienteNuevo.Apellido)
+                                    </h5>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
@@ -169,6 +218,13 @@
     .form-control:focus { background-color: rgba(255,255,255,0.05) !important; border-color: #00FFA3 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(0, 255, 163, 0.25) !important; }
     .form-control::placeholder { color: #6c757d !important; opacity: 0.6; }
 
+    .upload-zone { background-color: rgba(255,255,255,0.03); border: 1px dashed rgba(0, 255, 163, 0.28); transition: border-color .2s ease, background-color .2s ease; }
+    .upload-zone.drag-over { background-color: rgba(0, 255, 163, 0.08); border-color: #00FFA3; }
+    .profile-preview { width: 72px; height: 72px; flex: 0 0 72px; border-radius: 50%; background: linear-gradient(135deg, rgba(0,255,163,0.16), rgba(0,184,212,0.1)); border: 1px solid rgba(0,255,163,0.28); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #00FFA3; font-size: 2rem; }
+    .profile-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .profile-preview-sm { width: 52px; height: 52px; flex-basis: 52px; font-size: 1.45rem; }
+    .min-w-0 { min-width: 0; }
+
     /* utilidades */
     .tracking-widest { letter-spacing: 0.1em; }
     .transition-hover { transition: all 0.3s ease; }
@@ -182,14 +238,65 @@
 @code {
     private Cliente clienteNuevo = new Cliente();
     private bool registroExitoso = false;
+    private IBrowserFile? fotoCliente;
+    private string? fotoPreviewUrl;
+    private string? nombreFotoCliente;
+    private string mensajeError = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("gymioFileUpload.bindDropZone", "foto-cliente-nuevo-drop", "foto-cliente-nuevo-input");
+        }
+    }
 
     private async Task ProcesarRegistro()
     {
+        mensajeError = "";
+
         bool exito = await ClienteService.RegistrarClienteAsync(clienteNuevo);
         if (exito)
         {
+            if (fotoCliente != null)
+            {
+                try
+                {
+                    clienteNuevo.FotoUrl = await ProfileImageService.GuardarImagenPerfilAsync(fotoCliente, "clientes", clienteNuevo.FotoUrl);
+                    await ClienteService.ActualizarClienteAsync(clienteNuevo);
+                }
+                catch (Exception ex)
+                {
+                    mensajeError = ex.Message;
+                    return;
+                }
+            }
+
             registroExitoso = true;
             StateHasChanged();
+        }
+        else
+        {
+            mensajeError = "No se pudo registrar: el correo ya está usado por otro socio o usuario.";
+        }
+    }
+
+    private async Task SeleccionarFotoCliente(InputFileChangeEventArgs e)
+    {
+        mensajeError = "";
+        fotoCliente = e.File;
+        nombreFotoCliente = fotoCliente.Name;
+
+        try
+        {
+            fotoPreviewUrl = await ProfileImageService.CrearVistaPreviaAsync(fotoCliente);
+        }
+        catch (Exception ex)
+        {
+            fotoCliente = null;
+            nombreFotoCliente = null;
+            fotoPreviewUrl = null;
+            mensajeError = ex.Message;
         }
     }
 }

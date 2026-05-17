@@ -13,6 +13,7 @@
 @inject IRegistroEntrenamientoService RegistroEntrenamientoService
 @inject IClienteService ClienteService
 @inject IEjercicioCatalogoService EjercicioCatalogoService
+@inject IProgresoService ProgresoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
@@ -29,7 +30,16 @@
                     <p class="text-muted mb-0">@miRutina.Titulo · @miRutina.Objetivo</p>
                 }
             </div>
-            <span class="athlete-avatar">@(string.IsNullOrWhiteSpace(nombreCliente) ? "G" : nombreCliente[..1].ToUpper())</span>
+            <span class="athlete-avatar">
+                @if (!string.IsNullOrWhiteSpace(fotoClienteUrl))
+                {
+                    <img src="@fotoClienteUrl" alt="Foto de @nombreCliente" />
+                }
+                else
+                {
+                    @(string.IsNullOrWhiteSpace(nombreCliente) ? "G" : nombreCliente[..1].ToUpper())
+                }
+            </span>
         </div>
 
         <div class="segmented-tabs">
@@ -223,6 +233,49 @@
             }
             else
             {
+                <section class="history-dashboard">
+                    <div class="history-metric">
+                        <span>Sesiones</span>
+                        <strong>@historialEntrenamientos.Count</strong>
+                    </div>
+                    <div class="history-metric">
+                        <span>Series</span>
+                        <strong>@historialEntrenamientos.Sum(TotalSeries)</strong>
+                    </div>
+                    <div class="history-metric">
+                        <span>Volumen</span>
+                        <strong>@VolumenTotal(historialEntrenamientos).ToString("N0") lbs</strong>
+                    </div>
+                    <div class="history-metric">
+                        <span>Ultimo check-in</span>
+                        <strong>@(historialProgreso.FirstOrDefault()?.FechaRegistro.ToString("dd/MM") ?? "Pendiente")</strong>
+                    </div>
+                </section>
+
+                <section class="panel checkin-panel">
+                    <div>
+                        <h5 class="text-white fw-black mb-1">Check-ins fisicos</h5>
+                        <p class="text-muted mb-0">Peso, grasa y medidas para comparar evolucion fuera del entrenamiento.</p>
+                    </div>
+                    <button class="btn btn-outline-primary rounded-pill fw-bold px-4" @onclick="AbrirCheckIn">
+                        <i class="bi bi-plus-circle me-2"></i>Registrar
+                    </button>
+                </section>
+
+                @if (historialProgreso.Any())
+                {
+                    <div class="checkin-strip custom-scrollbar">
+                        @foreach (var progreso in historialProgreso.Take(6))
+                        {
+                            <article class="checkin-card">
+                                <span>@progreso.FechaRegistro.ToString("dd/MM/yyyy")</span>
+                                <strong>@progreso.PesoLibras.ToString("N1") lbs</strong>
+                                <small>@progreso.PorcentajeGrasa.ToString("N1")% grasa</small>
+                            </article>
+                        }
+                    </div>
+                }
+
                 <div class="history-list">
                     @foreach (var registro in historialEntrenamientos)
                     {
@@ -232,7 +285,11 @@
                                     <h5 class="text-white fw-bold mb-1">@registro.NombreDiaEntrenado</h5>
                                     <span class="text-muted small">@registro.FechaEntrenamiento.ToString("dd/MM/yyyy h:mm tt")</span>
                                 </div>
-                                <span class="badge bg-primary text-dark rounded-pill">@registro.EjerciciosHechos.Sum(e => e.Series.Count) series</span>
+                                <div class="history-totals">
+                                    <span>@TotalSeries(registro) series</span>
+                                    <span>@VolumenRegistro(registro).ToString("N0") lbs</span>
+                                    <span>RPE @RpePromedio(registro)</span>
+                                </div>
                             </div>
 
                             @if (!string.IsNullOrWhiteSpace(registro.ComentariosAtleta))
@@ -243,11 +300,14 @@
                             @foreach (var ejercicio in registro.EjerciciosHechos)
                             {
                                 <div class="history-exercise">
-                                    <strong>@ejercicio.NombreEjercicio</strong>
+                                    <div class="d-flex justify-content-between align-items-center gap-2">
+                                        <strong>@ejercicio.NombreEjercicio</strong>
+                                        <small class="text-muted">@VolumenEjercicio(ejercicio).ToString("N0") lbs</small>
+                                    </div>
                                     <div>
                                         @foreach (var serie in ejercicio.Series)
                                         {
-                                            <span>@serie.NumeroSerie: @serie.PesoLibras lbs x @serie.RepeticionesLogradas</span>
+                                            <span>@serie.NumeroSerie: @serie.PesoLibras lbs x @serie.RepeticionesLogradas · RPE @serie.Rpe</span>
                                         }
                                     </div>
                                 </div>
@@ -294,6 +354,64 @@
     </main>
 </div>
 
+@if (mostrarModalCheckIn)
+{
+    <div class="modal fade show d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white fw-black">Registrar check-in fisico</h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50" @onclick="CerrarCheckIn"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Peso lbs</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.PesoLibras" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">% grasa</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.PorcentajeGrasa" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pecho</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.Pecho" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Espalda</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.Espalda" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Brazo derecho</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.BrazoDerecho" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Brazo izquierdo</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.BrazoIzquierdo" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pierna derecha</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.PiernaDerecha" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pierna izquierda</label>
+                            <input type="number" step="0.1" class="form-control control-dark" @bind="nuevoProgreso.PiernaIzquierda" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Foto URL</label>
+                            <input class="form-control control-dark" @bind="nuevoProgreso.FotoProgresoUrl" placeholder="https://..." />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-link text-muted text-decoration-none fw-bold" @onclick="CerrarCheckIn">Cancelar</button>
+                    <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="GuardarCheckIn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
     .athlete-shell {
         min-height: calc(100vh - 6rem);
@@ -316,7 +434,8 @@
     .text-primary { color: #00FFA3 !important; }
     .bg-primary { background-color: #00FFA3 !important; }
     .eyebrow { color: #00FFA3; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
-    .athlete-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; }
+    .athlete-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; overflow: hidden; }
+    .athlete-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .segmented-tabs { background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: .25rem; display: flex; gap: .25rem; }
     .tab-btn { position: relative; flex: 1; border: 0; background: transparent; color: #94a3b8; border-radius: 999px; padding: .75rem .9rem; font-weight: 900; }
@@ -363,6 +482,21 @@
     .btn-gradient:hover { color: #041014; filter: brightness(1.08); }
 
     .history-list { display: grid; gap: 1rem; }
+    .history-dashboard { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .history-metric, .checkin-card {
+        background: #0f141e;
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: .9rem;
+        padding: 1rem;
+    }
+    .history-metric span, .checkin-card span { color: #94a3b8; font-size: .72rem; font-weight: 900; text-transform: uppercase; display: block; }
+    .history-metric strong, .checkin-card strong { color: white; font-size: 1.2rem; }
+    .checkin-panel { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .checkin-strip { display: flex; gap: .75rem; overflow-x: auto; margin-bottom: 1rem; padding-bottom: .25rem; }
+    .checkin-card { min-width: 170px; }
+    .checkin-card small { color: #94a3b8; display: block; margin-top: .25rem; }
+    .history-totals { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; }
+    .history-totals span { background: rgba(0,255,163,.08); color: #00FFA3; border: 1px solid rgba(0,255,163,.2); border-radius: 999px; padding: .3rem .65rem; font-size: .78rem; font-weight: 800; }
     .history-comment { background: rgba(255,255,255,.025); border-left: 3px solid #00FFA3; border-radius: .6rem; padding: .85rem; color: #e2e8f0; }
     .history-exercise { border-top: 1px solid rgba(255,255,255,.06); padding-top: .75rem; margin-top: .75rem; }
     .history-exercise strong { color: white; }
@@ -379,12 +513,17 @@
     .message-bubble p { margin: 0 0 .35rem; }
     .message-bubble span { font-size: .72rem; opacity: .7; display: block; text-align: right; }
     .chat-input { display: flex; gap: .75rem; border-top: 1px solid rgba(255,255,255,.06); padding-top: 1rem; }
+    .modal-backdrop-custom { background: rgba(3,7,18,.82); backdrop-filter: blur(8px); }
+    .modal-dark { background: #0f141e; border: 1px solid rgba(255,255,255,.08); border-radius: 1rem; overflow: hidden; }
+    .modal-dark .modal-header, .modal-dark .modal-footer { border-color: rgba(255,255,255,.08); }
 
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 999px; }
 
     @@media (max-width: 900px) {
         .exercise-card { grid-template-columns: 1fr; }
+        .history-dashboard { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .checkin-panel { flex-direction: column; align-items: stretch; }
         .segmented-tabs { overflow-x: auto; }
         .tab-btn { min-width: 120px; }
         .routine-date { align-self: flex-start; }
@@ -395,12 +534,14 @@
     private int idClienteActual;
     private int idEntrenadorAsignado;
     private string nombreCliente = "";
+    private string? fotoClienteUrl;
     private bool cargando = true;
     private string tabActual = "entrenamiento";
     private Rutina? miRutina;
     private string diaSeleccionado = "";
     private RegistroEntrenamiento entrenamientoDeHoy = new();
     private List<RegistroEntrenamiento> historialEntrenamientos = new();
+    private List<ProgresoFisico> historialProgreso = new();
     private Dictionary<string, bool> seriesCompletadas = new();
     private ChatEntrenador chatActual = new();
     private string nuevoMensajeTexto = "";
@@ -408,6 +549,8 @@
     private int mensajesSinLeer;
     private string mensajeConfirmacion = "";
     private bool guardadoCorrecto;
+    private bool mostrarModalCheckIn;
+    private ProgresoFisico nuevoProgreso = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -422,6 +565,12 @@
             {
                 idClienteActual = int.Parse(userIdClaim.Value);
                 nombreCliente = nameClaim?.Value ?? "Atleta";
+                var clienteActual = await ClienteService.ObtenerClientePorIdAsync(idClienteActual);
+                if (clienteActual != null)
+                {
+                    fotoClienteUrl = clienteActual.FotoUrl;
+                    nombreCliente = $"{clienteActual.Nombre} {clienteActual.Apellido}".Trim();
+                }
             }
         }
 
@@ -432,6 +581,7 @@
         }
 
         historialEntrenamientos = await RegistroEntrenamientoService.ObtenerPorClienteAsync(idClienteActual, 20);
+        historialProgreso = await ProgresoService.ObtenerHistorialClienteAsync(idClienteActual);
 
         if (miRutina != null && miRutina.Dias.Any())
         {
@@ -591,6 +741,30 @@
         seriesCompletadas[serieKey] = !seriesCompletadas.GetValueOrDefault(serieKey);
     }
 
+    private void AbrirCheckIn()
+    {
+        nuevoProgreso = new ProgresoFisico
+        {
+            ClienteId = idClienteActual,
+            FechaRegistro = DateTime.Now
+        };
+        mostrarModalCheckIn = true;
+    }
+
+    private void CerrarCheckIn()
+    {
+        mostrarModalCheckIn = false;
+    }
+
+    private async Task GuardarCheckIn()
+    {
+        nuevoProgreso.ClienteId = idClienteActual;
+        nuevoProgreso.FechaRegistro = DateTime.Now;
+        await ProgresoService.AgregarProgresoAsync(nuevoProgreso);
+        historialProgreso.Insert(0, nuevoProgreso);
+        mostrarModalCheckIn = false;
+    }
+
     private async Task FinalizarEntrenamiento()
     {
         var registroFinal = new RegistroEntrenamiento
@@ -696,6 +870,32 @@
     private static string SerieKey(RegistroEjercicio ejercicio, RegistroSerie serie)
     {
         return $"{ejercicio.EjercicioCatalogoId ?? ejercicio.NombreEjercicio}-{serie.NumeroSerie}";
+    }
+
+    private static int TotalSeries(RegistroEntrenamiento registro)
+    {
+        return registro.EjerciciosHechos.Sum(e => e.Series.Count);
+    }
+
+    private static double VolumenRegistro(RegistroEntrenamiento registro)
+    {
+        return registro.EjerciciosHechos.Sum(VolumenEjercicio);
+    }
+
+    private static double VolumenEjercicio(RegistroEjercicio ejercicio)
+    {
+        return ejercicio.Series.Sum(s => s.PesoLibras * s.RepeticionesLogradas);
+    }
+
+    private static double VolumenTotal(IEnumerable<RegistroEntrenamiento> registros)
+    {
+        return registros.Sum(VolumenRegistro);
+    }
+
+    private static string RpePromedio(RegistroEntrenamiento registro)
+    {
+        var series = registro.EjerciciosHechos.SelectMany(e => e.Series).Where(s => s.Rpe > 0).ToList();
+        return series.Any() ? series.Average(s => s.Rpe).ToString("N1") : "-";
     }
 
     public async ValueTask DisposeAsync()

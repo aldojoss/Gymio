@@ -2,15 +2,17 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
 }
 
 main {
     flex: 1;
+    min-width: 0;
 }
 
 .sidebar {
-    background-color: #040508 !important;
-    background-image: none !important;
+    background: #05070d !important;
+    overflow: hidden;
 }
 
 .top-row {
@@ -54,9 +56,12 @@ main {
 
     .sidebar {
         width: 250px;
+        flex: 0 0 250px;
         height: 100vh;
         position: sticky;
         top: 0;
+        display: flex;
+        z-index: 10;
     }
 
     .top-row {

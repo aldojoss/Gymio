@@ -1,154 +1,346 @@
-﻿@page "/inventario"
+@page "/inventario"
 @attribute [Authorize(Roles = "Administrador, Empleado")]
 @rendermode InteractiveServer
 
 @using Gymio.Models
 @using Gymio.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inject IProductoService ProductoService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Inventario - Gymio</PageTitle>
 
-<div class="page-container p-4 fade-in">
-    
-    @* ENCABEZADO *@
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+<div class="inventory-shell text-light">
+    <header class="inventory-header">
         <div>
-            <h2 class="fw-black text-white mb-0">Gestión de Inventario</h2>
-            <span class="text-muted small tracking-widest text-uppercase">Productos y precios</span>
+            <span class="eyebrow"><i class="bi bi-box-seam me-1"></i>Operacion de inventario</span>
+            <h2 class="text-white fw-black mb-1">Inventario, compras y proveedores</h2>
+            <p class="text-muted mb-0">Controla stock, costos, compras y egresos de inventario desde un solo lugar.</p>
         </div>
-        
-        <div class="d-flex gap-3 align-items-center w-100" style="max-width: 600px;">
-            <div class="input-group bg-dark border border-secondary border-opacity-25 rounded-pill overflow-hidden shadow-sm flex-grow-1">
-                <span class="input-group-text bg-transparent border-0 text-muted ps-4">
-                    <i class="bi bi-search"></i>
-                </span>
-                <input type="text" class="form-control bg-transparent border-0 text-white shadow-none py-2" 
-                       placeholder="Buscar producto..." 
-                       @bind="filtroBusqueda" @bind:event="oninput" />
-            </div>
 
-            <button class="btn btn-gradient rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover text-nowrap" @onclick="AbrirModalNuevo">
-                <i class="bi bi-plus-lg me-2"></i> Nuevo Producto
+        <div class="header-actions">
+            <button class="btn btn-outline-info rounded-pill fw-bold px-4" @onclick="() => AbrirModalProveedor()">
+                <i class="bi bi-truck me-2"></i>Proveedor
+            </button>
+            <button class="btn btn-outline-primary rounded-pill fw-bold px-4" @onclick="() => AbrirModalCompra()">
+                <i class="bi bi-bag-plus me-2"></i>Compra
+            </button>
+            <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="AbrirModalNuevoProducto">
+                <i class="bi bi-plus-lg me-2"></i>Producto
             </button>
         </div>
-    </div>
+    </header>
 
-    @* TABLA DE PRODUCTOS *@
-    <div class="table-responsive custom-scrollbar pb-3">
-        <table class="table modern-table table-borderless align-middle mb-0" style="min-width: 900px;">
-            <thead>
-                <tr class="text-muted text-uppercase small tracking-widest" style="font-size: 0.75rem;">
-                    <th class="ps-4 pb-3">Producto</th>
-                    <th class="pb-3 text-center">Costo (C$)</th>
-                    <th class="pb-3 text-center">Precio Venta (C$)</th>
-                    <th class="pb-3 text-center">Stock</th>
-                    <th class="pb-3 text-center">Estado</th>
-                    <th class="text-end pe-4 pb-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (listaProductos == null)
+    @if (!string.IsNullOrWhiteSpace(mensajeAccion))
+    {
+        <div class="alert @(accionExitosa ? "alert-success" : "alert-warning") rounded-3 fw-bold">
+            @mensajeAccion
+        </div>
+    }
+
+    <section class="metric-grid">
+        <div class="metric-card">
+            <span>Productos activos</span>
+            <strong>@listaProductos.Count(p => p.Activo)</strong>
+        </div>
+        <div class="metric-card">
+            <span>Unidades en stock</span>
+            <strong>@listaProductos.Sum(p => p.StockActual)</strong>
+        </div>
+        <div class="metric-card">
+            <span>Costo inventario</span>
+            <strong>C$ @ValorInventarioCosto.ToString("N2")</strong>
+        </div>
+        <div class="metric-card danger">
+            <span>Stock bajo</span>
+            <strong>@ProductosStockBajo</strong>
+        </div>
+    </section>
+
+    <section class="inventory-tabs">
+        <button class="tab-btn @(vistaActual == "productos" ? "active" : "")" @onclick='() => vistaActual = "productos"'>
+            <i class="bi bi-box me-2"></i>Productos
+        </button>
+        <button class="tab-btn @(vistaActual == "compras" ? "active" : "")" @onclick='() => vistaActual = "compras"'>
+            <i class="bi bi-receipt me-2"></i>Compras
+        </button>
+        <button class="tab-btn @(vistaActual == "proveedores" ? "active" : "")" @onclick='() => vistaActual = "proveedores"'>
+            <i class="bi bi-building me-2"></i>Proveedores
+        </button>
+    </section>
+
+    <section class="panel">
+        <div class="toolbar">
+            <div class="input-group search-box">
+                <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i class="bi bi-search"></i></span>
+                <input class="form-control control-dark border-0" placeholder="Buscar..." @bind="filtroBusqueda" @bind:event="oninput" />
+            </div>
+        </div>
+
+        @if (cargando)
+        {
+            <div class="empty-state">
+                <div class="spinner-border text-primary"></div>
+            </div>
+        }
+        else if (vistaActual == "productos")
+        {
+            <div class="table-responsive custom-scrollbar">
+                <table class="table inventory-table table-borderless align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Costo</th>
+                            <th>Venta</th>
+                            <th>Margen</th>
+                            <th>Stock</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!ProductosFiltrados.Any())
+                        {
+                            <tr><td colspan="7" class="text-center text-muted py-5">No hay productos para mostrar.</td></tr>
+                        }
+                        else
+                        {
+                            @foreach (var producto in ProductosFiltrados)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@producto.Nombre</strong>
+                                        <span>Valor stock: C$ @((producto.PrecioCompra * producto.StockActual).ToString("N2"))</span>
+                                    </td>
+                                    <td>C$ @producto.PrecioCompra.ToString("N2")</td>
+                                    <td class="text-primary fw-bold">C$ @producto.PrecioVenta.ToString("N2")</td>
+                                    <td>@MargenProducto(producto).ToString("N1")%</td>
+                                    <td>
+                                        <span class="stock-pill @(producto.StockActual <= 5 ? "danger" : "")">@producto.StockActual</span>
+                                    </td>
+                                    <td>
+                                        <span class="status-pill @(producto.Activo ? "ok" : "off")">@(producto.Activo ? "Activo" : "Inactivo")</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="icon-btn" @onclick="() => AbrirModalCompra(producto)" title="Registrar compra">
+                                            <i class="bi bi-bag-plus"></i>
+                                        </button>
+                                        <button class="icon-btn" @onclick="() => AbrirModalEdicionProducto(producto)" title="Editar producto">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else if (vistaActual == "compras")
+        {
+            <div class="timeline-list">
+                @if (!ComprasFiltradas.Any())
                 {
-                    <tr><td colspan="6" class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div></td></tr>
-                }
-                else if (!productosFiltrados.Any())
-                {
-                    <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">
-                            <div class="bg-dark d-inline-block p-4 rounded-circle mb-3"><i class="bi bi-box-seam display-4 text-white-50"></i></div>
-                            <h5 class="text-white">Sin resultados</h5>
-                            <p class="small">No hay productos que coincidan con la búsqueda.</p>
-                        </td>
-                    </tr>
+                    <div class="empty-state compact">
+                        <i class="bi bi-receipt text-white-50 fs-1"></i>
+                        <p class="text-muted mb-0 mt-2">Todavia no hay compras registradas.</p>
+                    </div>
                 }
                 else
                 {
-                    @foreach (var prod in productosFiltrados)
+                    @foreach (var compra in ComprasFiltradas)
                     {
-                        <tr class="modern-row slide-up">
-                            <td class="ps-4 py-3 rounded-start-4">
-                                <div class="fw-bold text-white" style="font-size: 1.05rem;">@prod.Nombre</div>
-                            </td>
-                            <td class="py-3 text-center text-white-50 font-monospace">@prod.PrecioCompra.ToString("N2")</td>
-                            <td class="py-3 text-center text-primary fw-bold font-monospace">@prod.PrecioVenta.ToString("N2")</td>
-                            <td class="py-3 text-center">
-                                <span class="badge @(prod.StockActual > 5 ? "bg-dark text-white-50" : "bg-danger bg-opacity-25 text-danger") border border-secondary border-opacity-25 rounded-pill px-3 font-monospace">
-                                    @prod.StockActual
-                                </span>
-                            </td>
-                            <td class="py-3 text-center">
-                                @if (prod.Activo)
-                                {
-                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 fw-normal">Activo</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 fw-normal">Inactivo</span>
-                                }
-                            </td>
-                            <td class="text-end pe-4 py-3 rounded-end-4">
-                                <button class="btn btn-sm btn-outline-info fw-bold rounded-pill px-3 transition-hover" @onclick="() => AbrirModalEdicion(prod)">
-                                    <i class="bi bi-pencil me-1"></i> Editar
-                                </button>
-                            </td>
-                        </tr>
-                        <tr class="row-spacer"><td colspan="6"></td></tr>
+                        <article class="timeline-card">
+                            <div>
+                                <strong>@(compra.ProductoReabastecido?.Nombre ?? "Producto")</strong>
+                                <span>@(compra.Proveedor?.NombreEmpresa ?? "Sin proveedor")</span>
+                            </div>
+                            <div class="timeline-metrics">
+                                <span>@compra.CantidadComprada unidades</span>
+                                <span>C$ @CostoUnitarioCompra(compra).ToString("N2") c/u</span>
+                                <strong>C$ @(compra.EgresoGenerado?.Monto.ToString("N2") ?? "0.00")</strong>
+                            </div>
+                            <small>@(compra.EgresoGenerado?.Fecha.ToString("dd/MM/yyyy h:mm tt") ?? "Sin fecha")</small>
+                        </article>
                     }
                 }
-            </tbody>
-        </table>
-    </div>
+            </div>
+        }
+        else
+        {
+            <div class="supplier-grid">
+                @if (!ProveedoresFiltrados.Any())
+                {
+                    <div class="empty-state compact">
+                        <i class="bi bi-building text-white-50 fs-1"></i>
+                        <p class="text-muted mb-0 mt-2">No hay proveedores registrados.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var proveedor in ProveedoresFiltrados)
+                    {
+                        <article class="supplier-card">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <strong>@proveedor.NombreEmpresa</strong>
+                                    <span>@(proveedor.Ruc ?? "Sin RUC")</span>
+                                </div>
+                                <button class="icon-btn" @onclick="() => AbrirModalProveedor(proveedor)" title="Editar proveedor">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                            <div class="supplier-meta">
+                                <span><i class="bi bi-telephone me-1"></i>@(proveedor.Telefono ?? "Sin telefono")</span>
+                                <span><i class="bi bi-envelope me-1"></i>@(proveedor.Email ?? "Sin correo")</span>
+                            </div>
+                            <span class="status-pill @(proveedor.Activo ? "ok" : "off")">@(proveedor.Activo ? "Activo" : "Inactivo")</span>
+                        </article>
+                    }
+                }
+            </div>
+        }
+    </section>
 </div>
 
-@* MODAL CREAR / EDITAR *@
-@if (mostrarModal)
+@if (mostrarModalProducto)
 {
-    <div class="modal fade show d-block fade-in" tabindex="-1" style="background-color: rgba(4, 5, 8, 0.8); backdrop-filter: blur(8px);">
+    <div class="modal fade show d-block modal-backdrop-custom" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark border border-secondary border-opacity-25 shadow-lg rounded-4 overflow-hidden">
-                <div class="modal-header border-bottom border-secondary border-opacity-25 p-4">
-                    <h5 class="modal-title fw-black text-white d-flex align-items-center">
-                        <div class="bg-gradient-primary rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                            <i class="bi bi-box text-dark fs-5"></i>
-                        </div>
-                        @(esEdicion ? "Editar Producto" : "Nuevo Producto")
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white opacity-50 shadow-none" @onclick="CerrarModal"></button>
+            <div class="modal-content modal-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-black text-white">@(esEdicionProducto ? "Editar producto" : "Nuevo producto")</h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50" @onclick="CerrarModales"></button>
                 </div>
-                
-                <div class="modal-body p-4">
-                    <div class="row g-4">
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Nombre del Producto</label>
-                            <input type="text" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none rounded-3" @bind="productoActual.Nombre" placeholder="Ej: Agua, Toalla, Mensualidad..." />
+                <div class="modal-body">
+                    <label class="form-label">Nombre</label>
+                    <input class="form-control control-dark mb-3" @bind="productoActual.Nombre" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Costo compra</label>
+                            <input type="number" min="0" step="0.01" class="form-control control-dark" @bind="productoActual.PrecioCompra" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Costo Compra (C$)</label>
-                            <input type="number" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none rounded-3" @bind="productoActual.PrecioCompra" />
+                            <label class="form-label">Precio venta</label>
+                            <input type="number" min="0" step="0.01" class="form-control control-dark" @bind="productoActual.PrecioVenta" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Precio Venta (C$)</label>
-                            <input type="number" class="form-control bg-transparent border-primary border-opacity-50 text-white shadow-none rounded-3" @bind="productoActual.PrecioVenta" />
+                            <label class="form-label">Stock inicial</label>
+                            <input type="number" min="0" class="form-control control-dark" @bind="productoActual.StockActual" disabled="@esEdicionProducto" />
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Stock Inicial</label>
-                            <input type="number" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none rounded-3" @bind="productoActual.StockActual" disabled="@esEdicion" />
-                            @if(esEdicion) { <small class="text-muted" style="font-size: 0.7rem;">El stock se ajusta desde el módulo de Compras.</small> }
-                        </div>
-                        <div class="col-12 mt-4">
-                            <div class="form-check form-switch p-3 rounded-3 border border-secondary border-opacity-25" style="background-color: rgba(255,255,255,0.02);">
-                                <input class="form-check-input ms-0 me-3" type="checkbox" id="estadoProd" @bind="productoActual.Activo" style="transform: scale(1.3);">
-                                <label class="form-check-label fw-bold text-white mt-1" for="estadoProd">
-                                    @(productoActual.Activo ? "Producto Activo (Visible en Caja)" : "Producto Inactivo (Oculto)")
-                                </label>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="productoActivo" @bind="productoActual.Activo">
+                                <label class="form-check-label text-white" for="productoActivo">Activo en venta</label>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="modal-footer border-top border-secondary border-opacity-25 p-4" style="background-color: rgba(255,255,255,0.02);">
-                    <button type="button" class="btn btn-link text-muted text-decoration-none fw-bold px-4" @onclick="CerrarModal">Cancelar</button>
-                    <button type="button" class="btn btn-gradient fw-bold rounded-pill px-4 shadow-sm" @onclick="GuardarProducto">Guardar</button>
+                <div class="modal-footer">
+                    <button class="btn btn-link text-muted text-decoration-none fw-bold" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="GuardarProducto">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalCompra)
+{
+    <div class="modal fade show d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-black text-white">Registrar compra de inventario</h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Producto</label>
+                    <select class="form-select control-dark mb-3" @bind="compraActual.ProductoId">
+                        <option value="0">Seleccionar producto</option>
+                        @foreach (var producto in listaProductos.OrderBy(p => p.Nombre))
+                        {
+                            <option value="@producto.Id">@producto.Nombre</option>
+                        }
+                    </select>
+
+                    <label class="form-label">Proveedor</label>
+                    <select class="form-select control-dark mb-3" @bind="compraActual.ProveedorId">
+                        <option value="0">Sin proveedor</option>
+                        @foreach (var proveedor in listaProveedores.Where(p => p.Activo).OrderBy(p => p.NombreEmpresa))
+                        {
+                            <option value="@proveedor.Id">@proveedor.NombreEmpresa</option>
+                        }
+                    </select>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" min="1" class="form-control control-dark" @bind="compraActual.Cantidad" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Costo unitario</label>
+                            <input type="number" min="0" step="0.01" class="form-control control-dark" @bind="compraActual.CostoUnitario" />
+                        </div>
+                    </div>
+
+                    <div class="purchase-total mt-3">
+                        <span>Total egreso</span>
+                        <strong>C$ @((compraActual.Cantidad * compraActual.CostoUnitario).ToString("N2"))</strong>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-link text-muted text-decoration-none fw-bold" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="RegistrarCompra">Registrar compra</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalProveedor)
+{
+    <div class="modal fade show d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-black text-white">@(proveedorActual.Id == 0 ? "Nuevo proveedor" : "Editar proveedor")</h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Empresa</label>
+                    <input class="form-control control-dark mb-3" @bind="proveedorActual.NombreEmpresa" />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">RUC</label>
+                            <input class="form-control control-dark" @bind="proveedorActual.Ruc" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telefono</label>
+                            <input class="form-control control-dark" @bind="proveedorActual.Telefono" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Correo</label>
+                            <input type="email" class="form-control control-dark" @bind="proveedorActual.Email" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Direccion</label>
+                            <textarea class="form-control control-dark" rows="2" @bind="proveedorActual.Direccion"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="proveedorActivo" @bind="proveedorActual.Activo">
+                                <label class="form-check-label text-white" for="proveedorActivo">Proveedor activo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-link text-muted text-decoration-none fw-bold" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="GuardarProveedor">Guardar</button>
                 </div>
             </div>
         </div>
@@ -156,105 +348,309 @@
 }
 
 <style>
-    .page-container { font-family: 'Segoe UI', Roboto, sans-serif; }
-    .bg-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); }
+    .inventory-shell { padding: 1.5rem; background: #0b111d; min-height: calc(100vh - 72px); }
+    .inventory-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
+    .eyebrow { color: #00FFA3; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
+    .fw-black { font-weight: 900 !important; }
     .text-primary { color: #00FFA3 !important; }
-    
-    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; border: none; }
-    .btn-gradient:hover { filter: brightness(1.1); color: #040508; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 255, 163, 0.3) !important; }
+    .bg-primary { background-color: #00FFA3 !important; }
+    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; border: 0; }
+    .btn-gradient:hover { color: #041014; filter: brightness(1.08); }
+    .btn-outline-primary { color: #00FFA3; border-color: rgba(0,255,163,.5); }
+    .btn-outline-primary:hover { background: #00FFA3; color: #041014; border-color: #00FFA3; }
+    .btn-outline-info { color: #00B8D4; border-color: rgba(0,184,212,.5); }
+    .btn-outline-info:hover { background: #00B8D4; color: #041014; border-color: #00B8D4; }
 
-    .modern-table { border-collapse: separate; border-spacing: 0; }
-    .modern-row td { background-color: #0f141e; border-top: 1px solid rgba(255, 255, 255, 0.02); border-bottom: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.2s ease; }
-    .modern-row td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.02); }
-    .modern-row td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.02); }
-    .row-spacer td { height: 10px; padding: 0; background: transparent; border: none; }
-    .modern-row:hover td { background-color: #161d2b; transform: scale(1.005); }
+    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .metric-card, .panel, .timeline-card, .supplier-card {
+        background: #0f141e;
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 1rem;
+        box-shadow: 0 18px 45px rgba(0,0,0,.14);
+    }
+    .metric-card { padding: 1.15rem; }
+    .metric-card span { color: #94a3b8; font-size: .72rem; font-weight: 900; text-transform: uppercase; display: block; }
+    .metric-card strong { color: white; font-size: 1.45rem; }
+    .metric-card.danger strong { color: #f43f5e; }
+    .panel { padding: 1rem; }
 
-    .form-control:focus { background-color: rgba(255,255,255,0.05) !important; border-color: #00FFA3 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(0, 255, 163, 0.25) !important; }
-    .form-switch .form-check-input:checked { background-color: #00FFA3; border-color: #00FFA3; }
-    .btn-outline-info { color: #00B8D4; border-color: rgba(0, 184, 212, 0.5); }
-    .btn-outline-info:hover { background-color: #00B8D4; color: #040508; border-color: #00B8D4; }
+    .inventory-tabs { display: flex; gap: .4rem; background: rgba(0,0,0,.24); border: 1px solid rgba(255,255,255,.07); border-radius: 999px; padding: .3rem; margin-bottom: 1rem; width: fit-content; }
+    .tab-btn { border: 0; background: transparent; color: #94a3b8; border-radius: 999px; padding: .7rem 1rem; font-weight: 900; }
+    .tab-btn.active { background: #00FFA3; color: #041014; }
+    .toolbar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+    .search-box { max-width: 420px; background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; }
 
-    .tracking-widest { letter-spacing: 0.1em; }
-    .fade-in { animation: fadeIn 0.3s ease-in-out; }
-    .slide-up { animation: slideUp 0.3s ease-out; }
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .control-dark, .control-dark:focus {
+        background-color: transparent !important;
+        color: white !important;
+        border-color: rgba(255,255,255,.15) !important;
+        box-shadow: none !important;
+    }
+    .form-label { color: #94a3b8; font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0; }
+
+    .inventory-table { min-width: 980px; border-collapse: separate; border-spacing: 0 .55rem; }
+    .inventory-table th { color: #94a3b8; font-size: .72rem; text-transform: uppercase; font-weight: 900; padding: 0 .75rem .25rem; }
+    .inventory-table td { background: #111827; color: #e2e8f0; padding: .95rem .75rem; }
+    .inventory-table td:first-child { border-radius: .8rem 0 0 .8rem; }
+    .inventory-table td:last-child { border-radius: 0 .8rem .8rem 0; }
+    .inventory-table strong { color: white; display: block; }
+    .inventory-table span { color: #94a3b8; font-size: .78rem; }
+
+    .stock-pill, .status-pill { border-radius: 999px; padding: .35rem .7rem; font-size: .78rem; font-weight: 900; }
+    .stock-pill { background: rgba(255,255,255,.06); color: white; }
+    .stock-pill.danger { background: rgba(244,63,94,.12); color: #f43f5e; border: 1px solid rgba(244,63,94,.25); }
+    .status-pill.ok { background: rgba(0,255,163,.08); color: #00FFA3; border: 1px solid rgba(0,255,163,.22); }
+    .status-pill.off { background: rgba(148,163,184,.08); color: #94a3b8; border: 1px solid rgba(148,163,184,.18); }
+    .icon-btn { width: 38px; height: 38px; border-radius: .75rem; border: 1px solid rgba(255,255,255,.1); background: transparent; color: #cbd5e1; margin-left: .35rem; }
+    .icon-btn:hover { border-color: #00FFA3; color: #00FFA3; }
+
+    .timeline-list { display: grid; gap: .8rem; }
+    .timeline-card { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 1rem; align-items: center; padding: 1rem; }
+    .timeline-card strong, .supplier-card strong { color: white; display: block; }
+    .timeline-card span, .supplier-card span, .timeline-card small { color: #94a3b8; }
+    .timeline-metrics { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+    .timeline-metrics span, .timeline-metrics strong { background: #111827; border: 1px solid rgba(255,255,255,.07); border-radius: 999px; padding: .35rem .7rem; font-size: .82rem; }
+    .timeline-metrics strong { color: #00FFA3; }
+    .supplier-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .supplier-card { padding: 1rem; }
+    .supplier-meta { display: grid; gap: .35rem; margin: .9rem 0; }
+
+    .empty-state { min-height: 260px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+    .empty-state.compact { min-height: 180px; }
+    .modal-backdrop-custom { background: rgba(3,7,18,.82); backdrop-filter: blur(8px); }
+    .modal-dark { background: #0f141e; border: 1px solid rgba(255,255,255,.08); border-radius: 1rem; overflow: hidden; }
+    .modal-dark .modal-header, .modal-dark .modal-footer { border-color: rgba(255,255,255,.08); }
+    .purchase-total { display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(0,255,163,.2); background: rgba(0,255,163,.07); border-radius: .8rem; padding: .85rem 1rem; }
+    .purchase-total span { color: #94a3b8; font-weight: 900; text-transform: uppercase; font-size: .72rem; }
+    .purchase-total strong { color: #00FFA3; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 999px; }
+
+    @@media (max-width: 1100px) {
+        .inventory-header { flex-direction: column; }
+        .header-actions { justify-content: flex-start; }
+        .metric-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .supplier-grid { grid-template-columns: 1fr; }
+        .timeline-card { grid-template-columns: 1fr; }
+        .timeline-metrics { justify-content: flex-start; }
+    }
 </style>
 
 @code {
-    private List<Producto>? listaProductos;
-    
-    // Variables para el buscador en tiempo real
-    private string _filtroBusqueda = "";
-    private string filtroBusqueda 
-    {
-        get => _filtroBusqueda;
-        set { _filtroBusqueda = value; StateHasChanged(); }
-    }
+    private List<Producto> listaProductos = new();
+    private List<Proveedor> listaProveedores = new();
+    private List<CompraInventario> listaCompras = new();
 
-    // Lista dinámica que reacciona a lo que tecleás
-    private List<Producto> productosFiltrados => 
-        string.IsNullOrWhiteSpace(filtroBusqueda) || listaProductos == null
-            ? (listaProductos ?? new List<Producto>())
-            : listaProductos.Where(p => p.Nombre.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase)).ToList();
+    private bool cargando = true;
+    private int usuarioActualId;
+    private string vistaActual = "productos";
+    private string filtroBusqueda = "";
+    private string mensajeAccion = "";
+    private bool accionExitosa;
 
-    private bool mostrarModal = false;
-    private bool esEdicion = false;
-    private Producto productoActual = new Producto();
+    private bool mostrarModalProducto;
+    private bool mostrarModalCompra;
+    private bool mostrarModalProveedor;
+    private bool esEdicionProducto;
+    private Producto productoActual = new();
+    private Proveedor proveedorActual = new();
+    private CompraInventarioInput compraActual = new();
+
+    private decimal ValorInventarioCosto => listaProductos.Sum(p => p.PrecioCompra * p.StockActual);
+    private int ProductosStockBajo => listaProductos.Count(p => p.Activo && p.StockActual <= 5);
+
+    private IEnumerable<Producto> ProductosFiltrados => string.IsNullOrWhiteSpace(filtroBusqueda)
+        ? listaProductos
+        : listaProductos.Where(p => p.Nombre.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<Proveedor> ProveedoresFiltrados => string.IsNullOrWhiteSpace(filtroBusqueda)
+        ? listaProveedores
+        : listaProveedores.Where(p =>
+            p.NombreEmpresa.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) ||
+            (p.Ruc?.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (p.Telefono?.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    private IEnumerable<CompraInventario> ComprasFiltradas => string.IsNullOrWhiteSpace(filtroBusqueda)
+        ? listaCompras
+        : listaCompras.Where(c =>
+            (c.ProductoReabastecido?.Nombre.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (c.Proveedor?.NombreEmpresa.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) ?? false));
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarProductos();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim != null)
+        {
+            int.TryParse(userIdClaim.Value, out usuarioActualId);
+        }
+
+        await CargarDatos();
     }
 
-    private async Task CargarProductos()
+    private async Task CargarDatos()
     {
-        // Solo molesta a la base de datos cuando carga la página o guardás un cambio
+        cargando = true;
         listaProductos = await ProductoService.ObtenerProductosAsync("");
+        listaProveedores = await ProductoService.ObtenerProveedoresAsync("");
+        listaCompras = await ProductoService.ObtenerComprasInventarioAsync(60);
+        cargando = false;
     }
 
-    private void AbrirModalNuevo()
+    private void AbrirModalNuevoProducto()
     {
-        esEdicion = false;
+        esEdicionProducto = false;
         productoActual = new Producto { Activo = true };
-        mostrarModal = true;
+        mostrarModalProducto = true;
+        mensajeAccion = "";
     }
 
-    private void AbrirModalEdicion(Producto prod)
+    private void AbrirModalEdicionProducto(Producto producto)
     {
-        esEdicion = true;
+        esEdicionProducto = true;
         productoActual = new Producto
         {
-            Id = prod.Id,
-            Nombre = prod.Nombre,
-            PrecioCompra = prod.PrecioCompra,
-            PrecioVenta = prod.PrecioVenta,
-            StockActual = prod.StockActual,
-            Activo = prod.Activo
+            Id = producto.Id,
+            Nombre = producto.Nombre,
+            PrecioCompra = producto.PrecioCompra,
+            PrecioVenta = producto.PrecioVenta,
+            StockActual = producto.StockActual,
+            Activo = producto.Activo
         };
-        mostrarModal = true;
+        mostrarModalProducto = true;
+        mensajeAccion = "";
     }
 
-    private void CerrarModal()
+    private void AbrirModalCompra(Producto? producto = null)
     {
-        mostrarModal = false;
+        compraActual = new CompraInventarioInput
+        {
+            ProductoId = producto?.Id ?? 0,
+            Cantidad = 1,
+            CostoUnitario = producto?.PrecioCompra > 0 ? producto.PrecioCompra : 0
+        };
+        mostrarModalCompra = true;
+        mensajeAccion = "";
+    }
+
+    private void AbrirModalProveedor(Proveedor? proveedor = null)
+    {
+        proveedorActual = proveedor == null
+            ? new Proveedor { Activo = true, NombreEmpresa = "" }
+            : new Proveedor
+            {
+                Id = proveedor.Id,
+                NombreEmpresa = proveedor.NombreEmpresa,
+                Ruc = proveedor.Ruc,
+                Telefono = proveedor.Telefono,
+                Email = proveedor.Email,
+                Direccion = proveedor.Direccion,
+                Activo = proveedor.Activo
+            };
+
+        mostrarModalProveedor = true;
+        mensajeAccion = "";
+    }
+
+    private void CerrarModales()
+    {
+        mostrarModalProducto = false;
+        mostrarModalCompra = false;
+        mostrarModalProveedor = false;
     }
 
     private async Task GuardarProducto()
     {
-        if (string.IsNullOrWhiteSpace(productoActual.Nombre) || productoActual.PrecioVenta <= 0) return;
+        if (string.IsNullOrWhiteSpace(productoActual.Nombre) || productoActual.PrecioVenta <= 0)
+        {
+            MostrarMensaje("Completa el nombre y el precio de venta del producto.", false);
+            return;
+        }
 
-        if (esEdicion)
+        if (esEdicionProducto)
         {
             await ProductoService.ActualizarProductoAsync(productoActual);
+            MostrarMensaje("Producto actualizado.", true);
         }
         else
         {
             await ProductoService.CrearProductoAsync(productoActual);
+            MostrarMensaje("Producto creado.", true);
         }
 
-        await CargarProductos();
-        mostrarModal = false;
+        CerrarModales();
+        await CargarDatos();
+    }
+
+    private async Task GuardarProveedor()
+    {
+        if (string.IsNullOrWhiteSpace(proveedorActual.NombreEmpresa))
+        {
+            MostrarMensaje("El nombre del proveedor es obligatorio.", false);
+            return;
+        }
+
+        await ProductoService.GuardarProveedorAsync(proveedorActual);
+        vistaActual = "proveedores";
+        MostrarMensaje("Proveedor guardado.", true);
+        CerrarModales();
+        await CargarDatos();
+    }
+
+    private async Task RegistrarCompra()
+    {
+        try
+        {
+            await ProductoService.RegistrarCompraInventarioAsync(
+                compraActual.ProductoId,
+                compraActual.Cantidad,
+                compraActual.CostoUnitario,
+                compraActual.ProveedorId > 0 ? compraActual.ProveedorId : null,
+                usuarioActualId);
+
+            vistaActual = "compras";
+            MostrarMensaje("Compra registrada: stock aumentado y egreso creado.", true);
+            CerrarModales();
+            await CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            MostrarMensaje(ex.Message, false);
+        }
+    }
+
+    private static decimal MargenProducto(Producto producto)
+    {
+        if (producto.PrecioVenta <= 0)
+        {
+            return 0;
+        }
+
+        return ((producto.PrecioVenta - producto.PrecioCompra) / producto.PrecioVenta) * 100;
+    }
+
+    private static decimal CostoUnitarioCompra(CompraInventario compra)
+    {
+        if (compra.CantidadComprada <= 0)
+        {
+            return 0;
+        }
+
+        return (compra.EgresoGenerado?.Monto ?? 0) / compra.CantidadComprada;
+    }
+
+    private void MostrarMensaje(string mensaje, bool exito)
+    {
+        mensajeAccion = mensaje;
+        accionExitosa = exito;
+    }
+
+    private sealed class CompraInventarioInput
+    {
+        public int ProductoId { get; set; }
+        public int Cantidad { get; set; } = 1;
+        public decimal CostoUnitario { get; set; }
+        public int ProveedorId { get; set; }
     }
 }

@@ -2,21 +2,24 @@
 @attribute [Authorize(Roles = "Administrador,Empleado")]
 @using Gymio.Models
 @using Gymio.Interfaces
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IClienteService ClienteService
 @inject IVentaService VentaService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Gymio - Dashboard</PageTitle>
 
 <div class="page-container px-4 py-4 fade-in">
     
-    @* ENCABEZADO *@
+    @* ENCABEZADO PERSONALIZADO *@
     <div class="row mb-5 align-items-center slide-up">
         <div class="col">
             <h6 class="text-primary fw-bold mb-1 tracking-widest text-uppercase small">
-                <i class="bi bi-broadcast me-2"></i>Terminal Principal
+                <i class="bi bi-person-badge me-2"></i>@saludoDelDia
             </h6>
-            <h1 class="text-white fw-black display-5 mb-0 tracking-tight">
-                PANEL DE <span class="text-transparent bg-clip-text bg-gradient-primary">CONTROL</span>
+            <h1 class="text-white fw-black display-4 mb-0 tracking-tight">
+                <span class="text-transparent bg-clip-text bg-gradient-primary">@nombreUsuario</span>
             </h1>
         </div>
         <div class="col-auto">
@@ -315,34 +318,63 @@
     private int ventasMes = 0;
     private List<Venta> ultimasVentas = new();
     
+    // Variables para el saludo personalizado
+    private string nombreUsuario = "Usuario";
+    private string saludoDelDia = "Bienvenido a Gymio";
+
     // Arrays para pintar la gráfica en CSS
     private int[] alturasGrafico = new int[7];
     private string[] diasSemana = new string[7] { "LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM" };
 
     protected override async Task OnInitializedAsync()
     {
+        await CargarDatosUsuario();
+        
         totalClientes = await ClienteService.CargarCantidadClientes();
         ingresosHoy = await VentaService.GetIngresosHoyAsync();
         ventasMes = await VentaService.GetTotalVentasMesAsync();
         ultimasVentas = await VentaService.GetUltimasVentasAsync(5);
         
-        // Ejecutamos la lógica de la gráfica después de cargar todo
         await CargarGraficaSemanal();
+    }
+
+    private async Task CargarDatosUsuario()
+    {
+        // Determinamos el saludo por la hora del sistema
+        var hora = DateTime.Now.Hour;
+        if (hora >= 5 && hora < 12)
+            saludoDelDia = "Buenos días,";
+        else if (hora >= 12 && hora < 18)
+            saludoDelDia = "Buenas tardes,";
+        else
+            saludoDelDia = "Buenas noches,";
+
+        // Obtenemos el nombre del usuario desde la Cookie
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            // El ClaimTypes.Name usualmente guarda el "NombreCompleto" cuando configurás el Login
+            var nombreCompleto = user.FindFirst(ClaimTypes.Name)?.Value;
+            
+            if (!string.IsNullOrEmpty(nombreCompleto))
+            {
+                // Extraemos solo el primer nombre (hasta el primer espacio) para que sea más amigable
+                var primerNombre = nombreCompleto.Split(' ').FirstOrDefault();
+                nombreUsuario = "¡Hola, " + primerNombre + "!";
+            }
+        }
     }
 
     private async Task CargarGraficaSemanal()
     {
-
         var ingresosReales = await VentaService.GetIngresosUltimos7DiasAsync();
-
         decimal maxMonto = ingresosReales.Any() && ingresosReales.Max() > 0 ? ingresosReales.Max() : 1;
-
 
         for (int i = 0; i < 7; i++)
         {
             alturasGrafico[i] = (int)((ingresosReales[i] / maxMonto) * 100);
-            
-
             if (alturasGrafico[i] < 5) alturasGrafico[i] = 5;
 
             var dia = DateTime.Today.AddDays(-6 + i);

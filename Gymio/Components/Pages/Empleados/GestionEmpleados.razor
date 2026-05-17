@@ -1,12 +1,15 @@
-﻿@page "/admin/empleados"
+@page "/admin/empleados"
 @attribute [Authorize(Roles = "Administrador")]
 @rendermode InteractiveServer
 
 @using Gymio.Models
 @using Gymio.Data
 @using Gymio.Constant
+@using Gymio.Interfaces
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<GymioDbContext> DbFactory
+@inject IProfileImageService ProfileImageService
+@inject IJSRuntime JS
 
 <PageTitle>Empleados - Gymio</PageTitle>
 
@@ -95,8 +98,15 @@
                         <tr class="modern-row slide-up">
                             <td class="ps-4 py-3 rounded-start-4">
                                 <div class="d-flex align-items-center gap-3 py-2">
-                                    <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-dark fw-black shadow-sm">
-                                        @(string.IsNullOrWhiteSpace(emp.NombreCompleto) ? "?" : emp.NombreCompleto.Substring(0, 1).ToUpper())
+                                    <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-dark fw-black shadow-sm overflow-hidden">
+                                        @if (!string.IsNullOrEmpty(emp.FotoUrl))
+                                        {
+                                            <img src="@emp.FotoUrl" alt="Foto de @emp.NombreCompleto" class="avatar-img" />
+                                        }
+                                        else
+                                        {
+                                            @(string.IsNullOrWhiteSpace(emp.NombreCompleto) ? "?" : emp.NombreCompleto.Substring(0, 1).ToUpper())
+                                        }
                                     </div>
                                     <div>
                                         <h6 class="mb-0 text-white fw-bold">@emp.NombreCompleto</h6>
@@ -180,6 +190,32 @@
                             </label>
                             <input type="password" class="form-control bg-dark text-white border-secondary border-opacity-50 shadow-none" @bind="passwordInput" placeholder="********" />
                         </div>
+
+                        <div class="col-12">
+                            <label class="form-label text-muted tracking-widest text-uppercase small fw-bold">Foto de Perfil</label>
+                            <div id="foto-empleado-drop" class="upload-zone rounded-4 p-3 d-flex align-items-center gap-3">
+                                <div class="profile-preview">
+                                    @if (!string.IsNullOrEmpty(fotoEmpleadoPreviewUrl) || !string.IsNullOrEmpty(empleadoActual.FotoUrl))
+                                    {
+                                        <img src="@(fotoEmpleadoPreviewUrl ?? empleadoActual.FotoUrl)" alt="Foto del empleado" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle"></i>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <InputFile id="foto-empleado-input" OnChange="SeleccionarFotoEmpleado" accept="image/png,image/jpeg,image/webp" class="form-control bg-dark text-white border-secondary border-opacity-50 shadow-none" />
+                                    <small class="text-muted d-block mt-2">
+                                        Guarda solo la ruta en SQL y el archivo optimizado en wwwroot. También podés arrastrar o pegar la foto aquí.
+                                        @if (!string.IsNullOrEmpty(nombreFotoEmpleado))
+                                        {
+                                            <span class="text-primary fw-bold ms-1">@nombreFotoEmpleado</span>
+                                        }
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     @if (!string.IsNullOrEmpty(mensajeError))
@@ -234,6 +270,11 @@
         height: 44px;
         background: linear-gradient(135deg, #00FFA3, #00B8D4);
     }
+    .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .upload-zone { background-color: rgba(255,255,255,0.03); border: 1px dashed rgba(0, 255, 163, 0.28); transition: border-color .2s ease, background-color .2s ease; }
+    .upload-zone.drag-over { background-color: rgba(0, 255, 163, 0.08); border-color: #00FFA3; }
+    .profile-preview { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 50%; background: linear-gradient(135deg, rgba(0,255,163,0.16), rgba(0,184,212,0.1)); border: 1px solid rgba(0,255,163,0.28); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #00FFA3; font-size: 1.8rem; }
+    .profile-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .modern-table { border-collapse: separate; border-spacing: 0; }
     .modern-row td {
@@ -270,6 +311,9 @@
     private string passwordInput = "";
     private string mensajeError = "";
     private string filtroBusqueda = "";
+    private IBrowserFile? fotoEmpleado;
+    private string? fotoEmpleadoPreviewUrl;
+    private string? nombreFotoEmpleado;
 
     private List<Usuario> empleadosFiltrados
     {
@@ -292,6 +336,14 @@
         await CargarEmpleados();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (mostrandoModal)
+        {
+            await JS.InvokeVoidAsync("gymioFileUpload.bindDropZone", "foto-empleado-drop", "foto-empleado-input");
+        }
+    }
+
     private async Task CargarEmpleados()
     {
         using var context = await DbFactory.CreateDbContextAsync();
@@ -306,6 +358,9 @@
     {
         empleadoActual = new Usuario { Rol = RolesGymio.Empleado, Activo = true };
         passwordInput = "";
+        fotoEmpleado = null;
+        fotoEmpleadoPreviewUrl = null;
+        nombreFotoEmpleado = null;
         mensajeError = "";
         mostrandoModal = true;
     }
@@ -319,9 +374,13 @@
             Email = emp.Email,
             Rol = emp.Rol,
             Activo = emp.Activo,
-            PasswordHash = emp.PasswordHash
+            PasswordHash = emp.PasswordHash,
+            FotoUrl = emp.FotoUrl
         };
         passwordInput = "";
+        fotoEmpleado = null;
+        fotoEmpleadoPreviewUrl = null;
+        nombreFotoEmpleado = null;
         mensajeError = "";
         mostrandoModal = true;
     }
@@ -329,6 +388,9 @@
     private void CerrarModal()
     {
         mostrandoModal = false;
+        fotoEmpleado = null;
+        fotoEmpleadoPreviewUrl = null;
+        nombreFotoEmpleado = null;
     }
 
     private async Task GuardarEmpleado()
@@ -362,6 +424,21 @@
 
             empleadoActual.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordInput);
             context.Usuarios.Add(empleadoActual);
+            await context.SaveChangesAsync();
+
+            if (fotoEmpleado != null)
+            {
+                try
+                {
+                    empleadoActual.FotoUrl = await ProfileImageService.GuardarImagenPerfilAsync(fotoEmpleado, "staff", empleadoActual.FotoUrl);
+                    await context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    mensajeError = ex.Message;
+                    return;
+                }
+            }
         }
         else
         {
@@ -371,19 +448,53 @@
                 empleadoDb.NombreCompleto = empleadoActual.NombreCompleto;
                 empleadoDb.Email = empleadoActual.Email;
                 empleadoDb.Rol = empleadoActual.Rol;
+                empleadoDb.FotoUrl = empleadoActual.FotoUrl;
                 
                 if (!string.IsNullOrWhiteSpace(passwordInput))
                 {
                     empleadoDb.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordInput);
                 }
 
+                if (fotoEmpleado != null)
+                {
+                    try
+                    {
+                        empleadoDb.FotoUrl = await ProfileImageService.GuardarImagenPerfilAsync(fotoEmpleado, "staff", empleadoDb.FotoUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        mensajeError = ex.Message;
+                        return;
+                    }
+                }
+
                 context.Usuarios.Update(empleadoDb);
             }
+
+            await context.SaveChangesAsync();
         }
 
-        await context.SaveChangesAsync();
         CerrarModal();
         await CargarEmpleados();
+    }
+
+    private async Task SeleccionarFotoEmpleado(InputFileChangeEventArgs e)
+    {
+        mensajeError = "";
+        fotoEmpleado = e.File;
+        nombreFotoEmpleado = fotoEmpleado.Name;
+
+        try
+        {
+            fotoEmpleadoPreviewUrl = await ProfileImageService.CrearVistaPreviaAsync(fotoEmpleado);
+        }
+        catch (Exception ex)
+        {
+            fotoEmpleado = null;
+            nombreFotoEmpleado = null;
+            fotoEmpleadoPreviewUrl = null;
+            mensajeError = ex.Message;
+        }
     }
 
     private async Task AlternarEstado(Usuario emp)

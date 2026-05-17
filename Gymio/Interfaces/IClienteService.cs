@@ -1,4 +1,4 @@
-﻿using Gymio.Models;
+using Gymio.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gymio.Interfaces
@@ -7,6 +7,7 @@ namespace Gymio.Interfaces
     {
         Task<bool> RegistrarClienteAsync(Cliente nuevoCliente);
         Task<List<Cliente>> ObtenerClientesAsync(string terminoBusqueda = "");
+        Task<Cliente?> ObtenerClientePorIdAsync(int clienteId);
 
         
         Task<Cliente?> ObtenerClientePorQRAsync(string codigoQR);

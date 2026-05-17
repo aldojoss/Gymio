@@ -1,0 +1,441 @@
+@page "/maquinas"
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+
+@using Gymio.Models
+@using Gymio.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IMaquinaService MaquinaService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Equipos y Mantenimiento - Gymio</PageTitle>
+
+<div class="machine-shell text-light">
+    <header class="machine-header">
+        <div>
+            <span class="eyebrow"><i class="bi bi-tools me-1"></i>Activos del gimnasio</span>
+            <h2 class="text-white fw-black mb-1">Equipos y mantenimiento</h2>
+            <p class="text-muted mb-0">Controla maquinas, estados, reparaciones y egresos de mantenimiento.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline-primary rounded-pill fw-bold px-4" @onclick="() => AbrirMantenimiento()">
+                <i class="bi bi-wrench-adjustable me-2"></i>Mantenimiento
+            </button>
+            <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="NuevaMaquina">
+                <i class="bi bi-plus-lg me-2"></i>Maquina
+            </button>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(mensaje))
+    {
+        <div class="alert @(accionExitosa ? "alert-success" : "alert-warning") rounded-3 fw-bold">@mensaje</div>
+    }
+
+    <section class="metric-grid">
+        <div class="metric-card">
+            <span>Total equipos</span>
+            <strong>@maquinas.Count</strong>
+        </div>
+        <div class="metric-card">
+            <span>Activas</span>
+            <strong>@maquinas.Count(m => m.Estado == "Activa")</strong>
+        </div>
+        <div class="metric-card danger">
+            <span>En reparacion</span>
+            <strong>@maquinas.Count(m => m.Estado == "En Reparacion")</strong>
+        </div>
+        <div class="metric-card">
+            <span>Gasto mantenimientos</span>
+            <strong>C$ @mantenimientos.Sum(m => m.Costo).ToString("N2")</strong>
+        </div>
+    </section>
+
+    <section class="machine-tabs">
+        <button class="tab-btn @(vistaActual == "equipos" ? "active" : "")" @onclick='() => vistaActual = "equipos"'>
+            <i class="bi bi-hdd-stack me-2"></i>Equipos
+        </button>
+        <button class="tab-btn @(vistaActual == "mantenimientos" ? "active" : "")" @onclick='() => vistaActual = "mantenimientos"'>
+            <i class="bi bi-clock-history me-2"></i>Historial
+        </button>
+    </section>
+
+    <section class="panel">
+        <div class="toolbar">
+            <div class="input-group search-box">
+                <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i class="bi bi-search"></i></span>
+                <input class="form-control control-dark border-0" placeholder="Buscar codigo o maquina..." @bind="filtro" @bind:event="oninput" />
+            </div>
+        </div>
+
+        @if (cargando)
+        {
+            <div class="empty-state">
+                <div class="spinner-border text-primary"></div>
+            </div>
+        }
+        else if (vistaActual == "equipos")
+        {
+            <div class="machine-grid">
+                @if (!MaquinasFiltradas.Any())
+                {
+                    <div class="empty-state compact">
+                        <i class="bi bi-hdd-stack text-white-50 fs-1"></i>
+                        <p class="text-muted mb-0 mt-2">No hay equipos registrados.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var maquina in MaquinasFiltradas)
+                    {
+                        <article class="machine-card">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <span class="machine-code">@maquina.CodigoInventario</span>
+                                    <strong>@maquina.Nombre</strong>
+                                    <small>Adquirida: @maquina.FechaAdquisicion.ToString("dd/MM/yyyy")</small>
+                                </div>
+                                <span class="status-pill @EstadoClase(maquina.Estado)">@maquina.Estado</span>
+                            </div>
+                            <div class="machine-actions">
+                                <button class="btn btn-sm btn-outline-primary rounded-pill fw-bold" @onclick="() => AbrirMantenimiento(maquina)">
+                                    <i class="bi bi-wrench me-1"></i>Mantenimiento
+                                </button>
+                                <button class="btn btn-sm btn-outline-info rounded-pill fw-bold" @onclick="() => EditarMaquina(maquina)">
+                                    <i class="bi bi-pencil me-1"></i>Editar
+                                </button>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        }
+        else
+        {
+            <div class="timeline-list">
+                @if (!mantenimientos.Any())
+                {
+                    <div class="empty-state compact">
+                        <i class="bi bi-clock-history text-white-50 fs-1"></i>
+                        <p class="text-muted mb-0 mt-2">Aun no hay mantenimientos registrados.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in mantenimientos)
+                    {
+                        <article class="timeline-card">
+                            <div>
+                                <strong>@(item.Maquina?.Nombre ?? "Maquina")</strong>
+                                <span>@(item.Maquina?.CodigoInventario ?? "")</span>
+                            </div>
+                            <p>@item.Descripcion</p>
+                            <div class="text-end">
+                                <strong>C$ @item.Costo.ToString("N2")</strong>
+                                <small>@item.Fecha.ToString("dd/MM/yyyy h:mm tt")</small>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@if (mostrarModalMaquina)
+{
+    <div class="modal fade show d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white fw-black">@(maquinaActual.Id == 0 ? "Nueva maquina" : "Editar maquina")</h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Codigo inventario</label>
+                    <input class="form-control control-dark mb-3" @bind="maquinaActual.CodigoInventario" placeholder="CAM-001" />
+
+                    <label class="form-label">Nombre</label>
+                    <input class="form-control control-dark mb-3" @bind="maquinaActual.Nombre" placeholder="Caminadora, prensa, bicicleta..." />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha adquisicion</label>
+                            <input type="date" class="form-control control-dark" @bind="maquinaActual.FechaAdquisicion" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select control-dark" @bind="maquinaActual.Estado">
+                                <option value="Activa">Activa</option>
+                                <option value="En Reparacion">En Reparacion</option>
+                                <option value="De Baja">De Baja</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-link text-muted text-decoration-none fw-bold" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="GuardarMaquina">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalMantenimiento)
+{
+    <div class="modal fade show d-block modal-backdrop-custom" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white fw-black">Registrar mantenimiento</h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50" @onclick="CerrarModales"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Maquina</label>
+                    <select class="form-select control-dark mb-3" @bind="mantenimientoInput.MaquinaId">
+                        <option value="0">Seleccionar maquina</option>
+                        @foreach (var maquina in maquinas.OrderBy(m => m.Nombre))
+                        {
+                            <option value="@maquina.Id">@maquina.CodigoInventario - @maquina.Nombre</option>
+                        }
+                    </select>
+
+                    <label class="form-label">Descripcion</label>
+                    <textarea class="form-control control-dark mb-3" rows="3" @bind="mantenimientoInput.Descripcion" placeholder="Cambio de banda, lubricacion, reparacion electrica..."></textarea>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Costo</label>
+                            <input type="number" min="0" step="0.01" class="form-control control-dark" @bind="mantenimientoInput.Costo" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nuevo estado</label>
+                            <select class="form-select control-dark" @bind="mantenimientoInput.NuevoEstado">
+                                <option value="Activa">Activa</option>
+                                <option value="En Reparacion">En Reparacion</option>
+                                <option value="De Baja">De Baja</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-link text-muted text-decoration-none fw-bold" @onclick="CerrarModales">Cancelar</button>
+                    <button class="btn btn-gradient rounded-pill fw-black px-4" @onclick="RegistrarMantenimiento">Registrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .machine-shell { padding: 1.5rem; background: #0b111d; min-height: calc(100vh - 72px); }
+    .machine-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+    .header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .75rem; }
+    .eyebrow { color: #00FFA3; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
+    .fw-black { font-weight: 900 !important; }
+    .text-primary { color: #00FFA3 !important; }
+    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; border: 0; }
+    .btn-gradient:hover { color: #041014; filter: brightness(1.08); }
+    .btn-outline-primary { color: #00FFA3; border-color: rgba(0,255,163,.5); }
+    .btn-outline-primary:hover { background: #00FFA3; color: #041014; border-color: #00FFA3; }
+    .btn-outline-info { color: #00B8D4; border-color: rgba(0,184,212,.5); }
+    .btn-outline-info:hover { background: #00B8D4; color: #041014; border-color: #00B8D4; }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .metric-card, .panel, .machine-card, .timeline-card {
+        background: #0f141e;
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 1rem;
+    }
+    .metric-card { padding: 1.1rem; }
+    .metric-card span { color: #94a3b8; font-size: .72rem; font-weight: 900; text-transform: uppercase; display: block; }
+    .metric-card strong { color: white; font-size: 1.35rem; }
+    .metric-card.danger strong { color: #f43f5e; }
+    .panel { padding: 1rem; }
+
+    .machine-tabs { display: flex; gap: .4rem; background: rgba(0,0,0,.24); border: 1px solid rgba(255,255,255,.07); border-radius: 999px; padding: .3rem; margin-bottom: 1rem; width: fit-content; }
+    .tab-btn { border: 0; background: transparent; color: #94a3b8; border-radius: 999px; padding: .7rem 1rem; font-weight: 900; }
+    .tab-btn.active { background: #00FFA3; color: #041014; }
+    .toolbar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+    .search-box { max-width: 420px; background: #111827; border: 1px solid rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; }
+    .control-dark, .control-dark:focus { background-color: transparent !important; color: white !important; border-color: rgba(255,255,255,.15) !important; box-shadow: none !important; }
+    .form-label { color: #94a3b8; font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0; }
+
+    .machine-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1rem; }
+    .machine-card { padding: 1rem; }
+    .machine-card strong { color: white; display: block; font-size: 1.05rem; }
+    .machine-card small { color: #94a3b8; display: block; margin-top: .35rem; }
+    .machine-code { color: #00FFA3; font-size: .72rem; font-weight: 900; text-transform: uppercase; }
+    .machine-actions { display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+    .status-pill { border-radius: 999px; padding: .35rem .7rem; font-size: .78rem; font-weight: 900; white-space: nowrap; }
+    .status-pill.ok { background: rgba(0,255,163,.08); color: #00FFA3; border: 1px solid rgba(0,255,163,.22); }
+    .status-pill.warn { background: rgba(251,191,36,.12); color: #fbbf24; border: 1px solid rgba(251,191,36,.22); }
+    .status-pill.off { background: rgba(244,63,94,.12); color: #f43f5e; border: 1px solid rgba(244,63,94,.22); }
+
+    .timeline-list { display: grid; gap: .75rem; }
+    .timeline-card { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr) auto; gap: 1rem; align-items: center; padding: 1rem; }
+    .timeline-card strong { color: white; display: block; }
+    .timeline-card span, .timeline-card small { color: #94a3b8; display: block; }
+    .timeline-card p { color: #e2e8f0; margin: 0; }
+
+    .empty-state { min-height: 260px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+    .empty-state.compact { min-height: 180px; }
+    .modal-backdrop-custom { background: rgba(3,7,18,.82); backdrop-filter: blur(8px); }
+    .modal-dark { background: #0f141e; border: 1px solid rgba(255,255,255,.08); border-radius: 1rem; overflow: hidden; }
+    .modal-dark .modal-header, .modal-dark .modal-footer { border-color: rgba(255,255,255,.08); }
+
+    @@media (max-width: 1100px) {
+        .machine-header { flex-direction: column; }
+        .metric-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .machine-grid { grid-template-columns: 1fr; }
+        .timeline-card { grid-template-columns: 1fr; }
+    }
+</style>
+
+@code {
+    private List<Maquina> maquinas = new();
+    private List<MantenimientoMaquina> mantenimientos = new();
+    private bool cargando = true;
+    private int usuarioActualId;
+    private string vistaActual = "equipos";
+    private string filtro = "";
+    private string mensaje = "";
+    private bool accionExitosa;
+
+    private bool mostrarModalMaquina;
+    private bool mostrarModalMantenimiento;
+    private Maquina maquinaActual = new();
+    private MantenimientoInput mantenimientoInput = new();
+
+    private IEnumerable<Maquina> MaquinasFiltradas => string.IsNullOrWhiteSpace(filtro)
+        ? maquinas
+        : maquinas.Where(m =>
+            m.Nombre.Contains(filtro, StringComparison.OrdinalIgnoreCase) ||
+            m.CodigoInventario.Contains(filtro, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim != null)
+        {
+            int.TryParse(userIdClaim.Value, out usuarioActualId);
+        }
+
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        maquinas = await MaquinaService.ObtenerMaquinasAsync("");
+        mantenimientos = await MaquinaService.ObtenerMantenimientosAsync(80);
+        cargando = false;
+    }
+
+    private void NuevaMaquina()
+    {
+        maquinaActual = new Maquina
+        {
+            CodigoInventario = "",
+            Nombre = "",
+            FechaAdquisicion = DateTime.Today,
+            Estado = "Activa"
+        };
+        mostrarModalMaquina = true;
+        mensaje = "";
+    }
+
+    private void EditarMaquina(Maquina maquina)
+    {
+        maquinaActual = new Maquina
+        {
+            Id = maquina.Id,
+            CodigoInventario = maquina.CodigoInventario,
+            Nombre = maquina.Nombre,
+            FechaAdquisicion = maquina.FechaAdquisicion,
+            Estado = maquina.Estado
+        };
+        mostrarModalMaquina = true;
+        mensaje = "";
+    }
+
+    private void AbrirMantenimiento(Maquina? maquina = null)
+    {
+        mantenimientoInput = new MantenimientoInput
+        {
+            MaquinaId = maquina?.Id ?? 0,
+            NuevoEstado = maquina?.Estado == "De Baja" ? "De Baja" : "Activa"
+        };
+        mostrarModalMantenimiento = true;
+        mensaje = "";
+    }
+
+    private void CerrarModales()
+    {
+        mostrarModalMaquina = false;
+        mostrarModalMantenimiento = false;
+    }
+
+    private async Task GuardarMaquina()
+    {
+        if (string.IsNullOrWhiteSpace(maquinaActual.CodigoInventario) || string.IsNullOrWhiteSpace(maquinaActual.Nombre))
+        {
+            MostrarMensaje("Codigo y nombre son obligatorios.", false);
+            return;
+        }
+
+        await MaquinaService.GuardarMaquinaAsync(maquinaActual);
+        MostrarMensaje("Maquina guardada.", true);
+        CerrarModales();
+        await CargarDatos();
+    }
+
+    private async Task RegistrarMantenimiento()
+    {
+        try
+        {
+            await MaquinaService.RegistrarMantenimientoAsync(
+                mantenimientoInput.MaquinaId,
+                mantenimientoInput.Descripcion,
+                mantenimientoInput.Costo,
+                usuarioActualId,
+                mantenimientoInput.NuevoEstado);
+
+            vistaActual = "mantenimientos";
+            MostrarMensaje("Mantenimiento registrado y egreso generado si hubo costo.", true);
+            CerrarModales();
+            await CargarDatos();
+        }
+        catch (Exception ex)
+        {
+            MostrarMensaje(ex.Message, false);
+        }
+    }
+
+    private static string EstadoClase(string estado)
+    {
+        return estado switch
+        {
+            "Activa" => "ok",
+            "En Reparacion" => "warn",
+            _ => "off"
+        };
+    }
+
+    private void MostrarMensaje(string texto, bool exito)
+    {
+        mensaje = texto;
+        accionExitosa = exito;
+    }
+
+    private sealed class MantenimientoInput
+    {
+        public int MaquinaId { get; set; }
+        public string Descripcion { get; set; } = "";
+        public decimal Costo { get; set; }
+        public string NuevoEstado { get; set; } = "Activa";
+    }
+}

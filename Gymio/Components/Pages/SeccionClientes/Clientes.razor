@@ -1,9 +1,11 @@
-﻿@page "/clientes"
+@page "/clientes"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using Gymio.Models
 @using Gymio.Interfaces
 @inject IClienteService ClienteService
+@inject IProfileImageService ProfileImageService
+@inject IJSRuntime JS
 
 <div class="page-container p-4 fade-in">
     
@@ -73,8 +75,15 @@
                         <tr class="modern-row slide-up">
                             <td class="ps-4 py-3 rounded-start-4">
                                 <div class="d-flex align-items-center gap-3">
-                                    <div class="avatar-sm bg-gradient-primary text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center fs-5 shadow-sm" style="width: 45px; height: 45px;">
-                                        @(string.IsNullOrEmpty(cliente.Nombre) ? "U" : cliente.Nombre.Substring(0,1).ToUpper())
+                                    <div class="avatar-sm bg-gradient-primary text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center fs-5 shadow-sm overflow-hidden" style="width: 45px; height: 45px;">
+                                        @if (!string.IsNullOrWhiteSpace(cliente.FotoUrl))
+                                        {
+                                            <img src="@cliente.FotoUrl" alt="Foto de @cliente.Nombre @cliente.Apellido" class="w-100 h-100 object-fit-cover" />
+                                        }
+                                        else
+                                        {
+                                            @(string.IsNullOrEmpty(cliente.Nombre) ? "U" : cliente.Nombre.Substring(0,1).ToUpper())
+                                        }
                                     </div>
                                     <div>
                                         <div class="fw-bold text-white" style="font-size: 1.05rem;">@cliente.Nombre @cliente.Apellido</div>
@@ -160,7 +169,38 @@
                     <button type="button" class="btn-close btn-close-white opacity-50 shadow-none" @onclick="CerrarModal"></button>
                 </div>
                 <div class="modal-body p-4">
+                    @if (!string.IsNullOrWhiteSpace(mensajeErrorModal))
+                    {
+                        <div class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger py-2 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeErrorModal
+                        </div>
+                    }
                     <div class="row g-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Foto del Socio</label>
+                            <div id="foto-cliente-edicion-drop" class="upload-zone rounded-4 p-3 d-flex align-items-center gap-3">
+                                <div class="profile-preview">
+                                    @if (!string.IsNullOrWhiteSpace(fotoClientePreviewUrl) || !string.IsNullOrWhiteSpace(clienteActual.FotoUrl))
+                                    {
+                                        <img src="@(fotoClientePreviewUrl ?? clienteActual.FotoUrl)" alt="Foto de @clienteActual.Nombre @clienteActual.Apellido" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle"></i>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <InputFile id="foto-cliente-edicion-input" OnChange="SeleccionarFotoClienteEdicion" accept="image/png,image/jpeg,image/webp" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none rounded-3" />
+                                    <small class="text-muted d-block mt-2">
+                                        JPG, PNG o WEBP. Se optimiza antes de guardar. También podés arrastrar o pegar la foto aquí.
+                                        @if (!string.IsNullOrEmpty(nombreFotoClienteEdicion))
+                                        {
+                                            <span class="text-primary fw-bold ms-1">@nombreFotoClienteEdicion</span>
+                                        }
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Nombre</label>
                             <input type="text" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none rounded-3" @bind="clienteActual.Nombre" />
@@ -287,6 +327,10 @@
     .btn-outline-info:hover { background-color: #00B8D4; color: #040508; border-color: #00B8D4; }
     .btn-outline-success { color: #00FFA3; border-color: rgba(0, 255, 163, 0.5); }
     .btn-outline-success:hover { background-color: #00FFA3; color: #040508; border-color: #00FFA3; }
+    .upload-zone { background-color: rgba(255,255,255,0.03); border: 1px dashed rgba(0, 255, 163, 0.28); transition: border-color .2s ease, background-color .2s ease; }
+    .upload-zone.drag-over { background-color: rgba(0, 255, 163, 0.08); border-color: #00FFA3; }
+    .profile-preview { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 50%; background: linear-gradient(135deg, rgba(0,255,163,0.16), rgba(0,184,212,0.1)); border: 1px solid rgba(0,255,163,0.28); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #00FFA3; font-size: 1.8rem; }
+    .profile-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     /* utilidades */
     .tracking-widest { letter-spacing: 0.1em; }
@@ -313,6 +357,10 @@
     // variables para el modal de edicion
     private bool mostrarModal = false;
     private Cliente clienteActual = new Cliente();
+    private IBrowserFile? fotoClienteEdicion;
+    private string? fotoClientePreviewUrl;
+    private string? nombreFotoClienteEdicion;
+    private string mensajeErrorModal = "";
 
     // variables para el modal de asignacion
     private bool mostrarModalAsignacion = false;
@@ -320,6 +368,14 @@
     private List<Usuario> listaEntrenadores = new List<Usuario>();
     private int idEntrenadorSeleccionado = 0;
     private bool yaTieneEntrenador = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (mostrarModal)
+        {
+            await JS.InvokeVoidAsync("gymioFileUpload.bindDropZone", "foto-cliente-edicion-drop", "foto-cliente-edicion-input");
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -373,21 +429,65 @@
             Telefono = cliente.Telefono,
             CodigoQR = cliente.CodigoQR,
             FechaRegistro = cliente.FechaRegistro,
-            Activo = cliente.Activo
+            Activo = cliente.Activo,
+            FotoUrl = cliente.FotoUrl,
+            PasswordHash = cliente.PasswordHash
         };
+        fotoClienteEdicion = null;
+        fotoClientePreviewUrl = null;
+        nombreFotoClienteEdicion = null;
+        mensajeErrorModal = "";
         mostrarModal = true;
     }
 
     private void CerrarModal()
     {
         mostrarModal = false;
+        fotoClienteEdicion = null;
+        fotoClientePreviewUrl = null;
+        nombreFotoClienteEdicion = null;
+        mensajeErrorModal = "";
     }
 
     private async Task GuardarCambiosCliente()
     {
+        mensajeErrorModal = "";
+
+        try
+        {
+            if (fotoClienteEdicion != null)
+            {
+                clienteActual.FotoUrl = await ProfileImageService.GuardarImagenPerfilAsync(fotoClienteEdicion, "clientes", clienteActual.FotoUrl);
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorModal = ex.Message;
+            return;
+        }
+
         await ClienteService.ActualizarClienteAsync(clienteActual);
         await CargarClientes();
-        mostrarModal = false;
+        CerrarModal();
+    }
+
+    private async Task SeleccionarFotoClienteEdicion(InputFileChangeEventArgs e)
+    {
+        mensajeErrorModal = "";
+        fotoClienteEdicion = e.File;
+        nombreFotoClienteEdicion = fotoClienteEdicion.Name;
+
+        try
+        {
+            fotoClientePreviewUrl = await ProfileImageService.CrearVistaPreviaAsync(fotoClienteEdicion);
+        }
+        catch (Exception ex)
+        {
+            fotoClienteEdicion = null;
+            nombreFotoClienteEdicion = null;
+            fotoClientePreviewUrl = null;
+            mensajeErrorModal = ex.Message;
+        }
     }
 
     private async Task AbrirModalAsignacion(Cliente cliente)

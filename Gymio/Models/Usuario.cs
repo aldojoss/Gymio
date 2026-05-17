@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Gymio.Models
@@ -25,6 +25,7 @@ namespace Gymio.Models
 
         public bool Activo { get; set; } = true;
 
+        public string? FotoUrl { get; set; }
 
 
 

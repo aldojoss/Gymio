@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Gymio.Data;
 using Gymio.Models;
 using Gymio.Interfaces;
@@ -59,6 +59,21 @@ namespace Gymio.Services
             _context.Usuarios.Add(nuevoUsuario);
             await _context.SaveChangesAsync();
 
+            return true;
+        }
+
+        public async Task<bool> ActualizarFotoUsuarioAsync(int usuarioId, string? fotoUrl)
+        {
+            using var _context = await _contextFactory.CreateDbContextAsync();
+            var usuario = await _context.Usuarios.FindAsync(usuarioId);
+
+            if (usuario == null)
+            {
+                return false;
+            }
+
+            usuario.FotoUrl = fotoUrl;
+            await _context.SaveChangesAsync();
             return true;
         }
 

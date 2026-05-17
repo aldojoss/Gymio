@@ -44,10 +44,13 @@ builder.Services.AddScoped<IRutinaService, RutinaService>();
 builder.Services.AddScoped<IChatService,ChatService >();
 builder.Services.AddScoped<IRegistroEntrenamientoService, RegistroEntrenamientoService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddScoped<IProgresoService, ProgresoService>();
 builder.Services.AddScoped<IEjercicioCatalogoService, EjercicioCatalogoService>();
+builder.Services.AddScoped<IMaquinaService, MaquinaService>();
 builder.Services.AddScoped<IPlanillaService, PagoPlanillaService>();
 builder.Services.AddScoped<ITurnoCajaService, TurnoCajaService>();
 builder.Services.AddScoped<IEgresoService, EgresoService>();
+builder.Services.AddScoped<IProfileImageService, ProfileImageService>();
 builder.Services.AddRadzenComponents();
 
 builder.Services.AddSignalR();
@@ -98,6 +101,13 @@ else
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+
+var webRootPath = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(webRootPath);
+Directory.CreateDirectory(Path.Combine(webRootPath, "uploads", "personas", "clientes"));
+Directory.CreateDirectory(Path.Combine(webRootPath, "uploads", "personas", "staff"));
+
+app.UseStaticFiles();
 app.UseAntiforgery();
 app.MapStaticAssets();
 

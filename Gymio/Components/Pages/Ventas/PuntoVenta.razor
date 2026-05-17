@@ -1,4 +1,4 @@
-﻿@page "/punto-venta"
+@page "/punto-venta"
 @attribute [Authorize(Roles = "Administrador,Empleado")]
 @rendermode InteractiveServer
 
@@ -228,6 +228,12 @@
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 p-3 bg-dark d-flex justify-content-between">
+                    @if (!string.IsNullOrWhiteSpace(mensajeErrorImpresion))
+                    {
+                        <div class="text-danger small fw-bold w-100 mb-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@mensajeErrorImpresion
+                        </div>
+                    }
                     <button type="button" class="btn btn-outline-secondary rounded-pill fw-bold px-4" @onclick="CerrarRecibo">Cerrar</button>
                     <button type="button" class="btn btn-gradient-primary rounded-pill fw-bold px-4 text-dark" @onclick="ImprimirTicket">
                         <i class="bi bi-printer-fill me-2"></i> Imprimir
@@ -350,6 +356,7 @@
     
     private bool mostrarRecibo = false;
     private Venta? ultimaVenta = null;
+    private string mensajeErrorImpresion = "";
 
     private string _filtroBusqueda = "";
     private string filtroBusqueda 
@@ -468,6 +475,7 @@
             await VentaService.CrearVentaAsync(nuevaVenta);
             
             ultimaVenta = nuevaVenta;
+            mensajeErrorImpresion = "";
             mostrarRecibo = true; 
             
             carrito.Clear();
@@ -487,12 +495,23 @@
 
     private async Task ImprimirTicket()
     {
-        await JS.InvokeVoidAsync("window.print");
+        mensajeErrorImpresion = "";
+
+        try
+        {
+            await JS.InvokeVoidAsync("gymioPrintTicket", "ticket-impresion");
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorImpresion = "No se pudo abrir la impresión. Cerrá el recibo y volvé a intentarlo.";
+            Console.WriteLine($"Error al imprimir ticket: {ex.Message}");
+        }
     }
 
     private void CerrarRecibo()
     {
         mostrarRecibo = false;
         ultimaVenta = null;
+        mensajeErrorImpresion = "";
     }
 }

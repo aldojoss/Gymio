@@ -1,4 +1,4 @@
-﻿using Gymio.Data;
+using Gymio.Data;
 using Gymio.Interfaces;
 using Gymio.Models;
 using Microsoft.EntityFrameworkCore;
@@ -86,6 +86,12 @@ namespace Gymio.Services
             return await consulta.OrderByDescending(c => c.FechaRegistro).ToListAsync();
         }
 
+        public async Task<Cliente?> ObtenerClientePorIdAsync(int clienteId)
+        {
+            using var _context = await _contextFactory.CreateDbContextAsync();
+            return await _context.Clientes.FirstOrDefaultAsync(c => c.Id == clienteId);
+        }
+
         public async Task<Cliente?> ObtenerClientePorQRAsync(string codigoQR)
         {
             using var _context = await _contextFactory.CreateDbContextAsync();
@@ -124,7 +130,24 @@ namespace Gymio.Services
 
             if (clienteTrackeado == null) { return false; }
 
-            _context.Entry(clienteTrackeado).CurrentValues.SetValues(cliente);
+            clienteTrackeado.Nombre = cliente.Nombre;
+            clienteTrackeado.Apellido = cliente.Apellido;
+            clienteTrackeado.Telefono = cliente.Telefono;
+            clienteTrackeado.Email = cliente.Email;
+            clienteTrackeado.CodigoQR = cliente.CodigoQR;
+            clienteTrackeado.FechaRegistro = cliente.FechaRegistro;
+            clienteTrackeado.Activo = cliente.Activo;
+
+            if (!string.IsNullOrWhiteSpace(cliente.FotoUrl))
+            {
+                clienteTrackeado.FotoUrl = cliente.FotoUrl;
+            }
+
+            if (!string.IsNullOrWhiteSpace(cliente.PasswordHash))
+            {
+                clienteTrackeado.PasswordHash = cliente.PasswordHash;
+            }
+
             await _context.SaveChangesAsync();
             return true;
         }

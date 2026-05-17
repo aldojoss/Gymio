@@ -1,9 +1,11 @@
-﻿@page "/entrenadores"
+@page "/entrenadores"
 @attribute [Authorize(Roles = "Administrador")]
 @rendermode InteractiveServer
 
 @using Gymio.Models
 @using Gymio.Interfaces
+@using Gymio.Data
+@using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
 
 @using Microsoft.AspNetCore.Components.Authorization
@@ -11,8 +13,11 @@
 @inject IClienteService ClienteService
 @inject IAuthService AuthService
 @inject IPlanillaService PlanillaService
+@inject IProfileImageService ProfileImageService
+@inject IDbContextFactory<GymioDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <div class="page-container p-4 fade-in">
     @* --- ALERTA DE ÉXITO GLOBAL --- *@
@@ -88,8 +93,15 @@
                         <tr class="modern-row slide-up">
                             <td class="ps-4 py-3 rounded-start-4">
                                 <div class="d-flex align-items-center gap-3">
-                                    <div class="avatar-sm bg-gradient-primary text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center fs-5 shadow-sm" style="width: 45px; height: 45px;">
-                                        @(string.IsNullOrEmpty(coach.NombreCompleto) ? "E" : coach.NombreCompleto.Substring(0,1).ToUpper())
+                                    <div class="avatar-sm bg-gradient-primary text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center fs-5 shadow-sm overflow-hidden" style="width: 45px; height: 45px;">
+                                        @if (!string.IsNullOrEmpty(coach.FotoUrl))
+                                        {
+                                            <img src="@coach.FotoUrl" alt="Foto de @coach.NombreCompleto" class="avatar-img" />
+                                        }
+                                        else
+                                        {
+                                            @(string.IsNullOrEmpty(coach.NombreCompleto) ? "E" : coach.NombreCompleto.Substring(0,1).ToUpper())
+                                        }
                                     </div>
                                     <div>
                                         <div class="fw-bold text-white" style="font-size: 1.05rem;">@coach.NombreCompleto</div>
@@ -112,7 +124,7 @@
                                 <button class="btn btn-action btn-outline-success rounded-circle transition-hover" title="Pagar Planilla" @onclick="() => AbrirModalPago(coach)">
                                     <i class="bi bi-cash-stack"></i>
                                 </button>
-                                <button class="btn btn-action btn-outline-warning rounded-circle ms-2 transition-hover" title="editar datos del coach">
+                                <button class="btn btn-action btn-outline-warning rounded-circle ms-2 transition-hover" title="editar datos del coach" @onclick="() => AbrirModalEdicion(coach)">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button class="btn btn-action btn-outline-danger rounded-circle ms-2 transition-hover" title="dar de baja">
@@ -164,6 +176,31 @@
                             <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Contraseña Temporal</label>
                             <input type="password" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" placeholder="Asigna una contraseña inicial" @bind="passwordPlano" />
                         </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Foto del Coach</label>
+                            <div id="foto-coach-nuevo-drop" class="upload-zone rounded-4 p-3 d-flex align-items-center gap-3">
+                                <div class="profile-preview">
+                                    @if (!string.IsNullOrEmpty(fotoCoachPreviewUrl))
+                                    {
+                                        <img src="@fotoCoachPreviewUrl" alt="Vista previa de la foto del coach" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-badge"></i>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <InputFile id="foto-coach-nuevo-input" OnChange="SeleccionarFotoCoach" accept="image/png,image/jpeg,image/webp" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none" />
+                                    <small class="text-muted d-block mt-2">
+                                        JPG, PNG o WEBP. Se optimiza antes de guardar. También podés arrastrar o pegar la foto aquí.
+                                        @if (!string.IsNullOrEmpty(nombreFotoCoach))
+                                        {
+                                            <span class="text-primary fw-bold ms-1">@nombreFotoCoach</span>
+                                        }
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -171,6 +208,84 @@
                     <button type="button" class="btn btn-link text-muted text-decoration-none fw-bold px-4" @onclick="CerrarModalNuevo">Cancelar</button>
                     <button type="button" class="btn btn-gradient rounded-pill px-4 py-2 fw-bold shadow-sm" @onclick="GuardarEntrenador">
                         <i class="bi bi-check2-circle me-2"></i> Confirmar Registro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* MODAL 2: EDITAR COACH *@
+@if (mostrarModalEdicion)
+{
+    <div class="modal fade show d-block fade-in" tabindex="-1" style="background-color: rgba(4, 5, 8, 0.8); backdrop-filter: blur(8px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary border-opacity-25 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 p-4">
+                    <h5 class="modal-title fw-black text-white d-flex align-items-center">
+                        <div class="bg-warning rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            <i class="bi bi-pencil-square text-dark fs-5"></i>
+                        </div>
+                        Editar Coach
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50 shadow-none" @onclick="CerrarModalEdicion"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(mensajeErrorEdicion))
+                    {
+                        <div class="alert alert-danger bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger py-2 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeErrorEdicion
+                        </div>
+                    }
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Nombre Completo</label>
+                            <input type="text" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" @bind="coachEdicion.NombreCompleto" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Correo Electrónico</label>
+                            <input type="email" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" @bind="coachEdicion.Email" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">
+                                Contraseña
+                                <span class="text-warning text-lowercase" style="font-size: 0.6rem;">(opcional)</span>
+                            </label>
+                            <input type="password" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none px-3 py-2 rounded-3" placeholder="Dejar vacío para mantenerla" @bind="passwordEdicion" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted small text-uppercase tracking-widest">Foto del Coach</label>
+                            <div id="foto-coach-edicion-drop" class="upload-zone rounded-4 p-3 d-flex align-items-center gap-3">
+                                <div class="profile-preview">
+                                    @if (!string.IsNullOrEmpty(fotoCoachEdicionPreviewUrl) || !string.IsNullOrEmpty(coachEdicion.FotoUrl))
+                                    {
+                                        <img src="@(fotoCoachEdicionPreviewUrl ?? coachEdicion.FotoUrl)" alt="Foto de @coachEdicion.NombreCompleto" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-badge"></i>
+                                    }
+                                </div>
+                                <div class="flex-grow-1">
+                                    <InputFile id="foto-coach-edicion-input" OnChange="SeleccionarFotoCoachEdicion" accept="image/png,image/jpeg,image/webp" class="form-control bg-transparent border-secondary border-opacity-50 text-white shadow-none" />
+                                    <small class="text-muted d-block mt-2">
+                                        Al guardar se reemplaza la foto anterior. También podés arrastrar o pegar la foto aquí.
+                                        @if (!string.IsNullOrEmpty(nombreFotoCoachEdicion))
+                                        {
+                                            <span class="text-primary fw-bold ms-1">@nombreFotoCoachEdicion</span>
+                                        }
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top border-secondary border-opacity-25 p-4" style="background-color: rgba(255,255,255,0.02) !important;">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none fw-bold px-4" @onclick="CerrarModalEdicion">Cancelar</button>
+                    <button type="button" class="btn btn-warning rounded-pill px-4 py-2 fw-bold shadow-sm text-dark" @onclick="GuardarEdicionEntrenador">
+                        <i class="bi bi-save me-2"></i> Guardar Cambios
                     </button>
                 </div>
             </div>
@@ -252,6 +367,11 @@
     .btn-outline-danger:hover { background-color: #f43f5e; color: #040508; }
     .btn-outline-success { color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
     .btn-outline-success:hover { background-color: #10b981; color: #040508; }
+    .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .upload-zone { background-color: rgba(255,255,255,0.03); border: 1px dashed rgba(0, 184, 212, 0.28); transition: border-color .2s ease, background-color .2s ease; }
+    .upload-zone.drag-over { background-color: rgba(0, 184, 212, 0.08); border-color: #00B8D4; }
+    .profile-preview { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 50%; background: linear-gradient(135deg, rgba(0,255,163,0.16), rgba(0,184,212,0.1)); border: 1px solid rgba(0,184,212,0.35); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #00B8D4; font-size: 1.8rem; }
+    .profile-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
     
     .tracking-widest { letter-spacing: 0.1em; }
     .transition-hover { transition: all 0.3s ease; }
@@ -277,6 +397,17 @@
     private string mensajeErrorModal = "";
     private Usuario nuevoCoach = new Usuario { Rol = "Entrenador" };
     private string passwordPlano = "";
+    private IBrowserFile? fotoCoach;
+    private string? fotoCoachPreviewUrl;
+    private string? nombreFotoCoach;
+
+    private bool mostrarModalEdicion = false;
+    private Usuario coachEdicion = new Usuario { Rol = "Entrenador" };
+    private string passwordEdicion = "";
+    private string mensajeErrorEdicion = "";
+    private IBrowserFile? fotoCoachEdicion;
+    private string? fotoCoachEdicionPreviewUrl;
+    private string? nombreFotoCoachEdicion;
 
     @* Variables para el pago a coachs *@
     private bool mostrarModalPago = false;
@@ -309,6 +440,19 @@
         }
 
         await CargarEntrenadores();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (mostrarModalNuevo)
+        {
+            await JS.InvokeVoidAsync("gymioFileUpload.bindDropZone", "foto-coach-nuevo-drop", "foto-coach-nuevo-input");
+        }
+
+        if (mostrarModalEdicion)
+        {
+            await JS.InvokeVoidAsync("gymioFileUpload.bindDropZone", "foto-coach-edicion-drop", "foto-coach-edicion-input");
+        }
     }
 
     private async Task CargarEntrenadores()
@@ -344,11 +488,20 @@
     {
         nuevoCoach = new Usuario { Rol = "Entrenador" };
         passwordPlano = "";
+        fotoCoach = null;
+        fotoCoachPreviewUrl = null;
+        nombreFotoCoach = null;
         mensajeErrorModal = "";
         mostrarModalNuevo = true;
     }
 
-    private void CerrarModalNuevo() => mostrarModalNuevo = false;
+    private void CerrarModalNuevo()
+    {
+        mostrarModalNuevo = false;
+        fotoCoach = null;
+        fotoCoachPreviewUrl = null;
+        nombreFotoCoach = null;
+    }
 
     private async Task GuardarEntrenador()
     {
@@ -361,6 +514,20 @@
             bool exito = await AuthService.CrearUsuarioFuerteAsync(nuevoCoach, passwordPlano);
             if (exito)
             {
+                 if (fotoCoach != null)
+                 {
+                     try
+                     {
+                         nuevoCoach.FotoUrl = await ProfileImageService.GuardarImagenPerfilAsync(fotoCoach, "staff", nuevoCoach.FotoUrl);
+                         await AuthService.ActualizarFotoUsuarioAsync(nuevoCoach.Id, nuevoCoach.FotoUrl);
+                     }
+                     catch (Exception ex)
+                     {
+                         mensajeErrorModal = ex.Message;
+                         return;
+                     }
+                 }
+
                  mostrarModalNuevo = false;
                  await CargarEntrenadores();
                  
@@ -369,6 +536,9 @@
                  
                  nuevoCoach = new Usuario();
                  passwordPlano = "";
+                 fotoCoach = null;
+                 fotoCoachPreviewUrl = null;
+                 nombreFotoCoach = null;
             }
             else 
             {
@@ -378,6 +548,133 @@
         else
         {
             mensajeErrorModal = "Por favor, completá todos los campos requeridos.";
+        }
+    }
+
+    private async Task SeleccionarFotoCoach(InputFileChangeEventArgs e)
+    {
+        mensajeErrorModal = "";
+        fotoCoach = e.File;
+        nombreFotoCoach = fotoCoach.Name;
+
+        try
+        {
+            fotoCoachPreviewUrl = await ProfileImageService.CrearVistaPreviaAsync(fotoCoach);
+        }
+        catch (Exception ex)
+        {
+            fotoCoach = null;
+            nombreFotoCoach = null;
+            fotoCoachPreviewUrl = null;
+            mensajeErrorModal = ex.Message;
+        }
+    }
+
+    private void AbrirModalEdicion(Usuario coach)
+    {
+        coachEdicion = new Usuario
+        {
+            Id = coach.Id,
+            NombreCompleto = coach.NombreCompleto,
+            Email = coach.Email,
+            Rol = coach.Rol,
+            Activo = coach.Activo,
+            PasswordHash = coach.PasswordHash,
+            FotoUrl = coach.FotoUrl
+        };
+        passwordEdicion = "";
+        mensajeErrorEdicion = "";
+        fotoCoachEdicion = null;
+        fotoCoachEdicionPreviewUrl = null;
+        nombreFotoCoachEdicion = null;
+        mostrarModalEdicion = true;
+    }
+
+    private void CerrarModalEdicion()
+    {
+        mostrarModalEdicion = false;
+        passwordEdicion = "";
+        mensajeErrorEdicion = "";
+        fotoCoachEdicion = null;
+        fotoCoachEdicionPreviewUrl = null;
+        nombreFotoCoachEdicion = null;
+    }
+
+    private async Task GuardarEdicionEntrenador()
+    {
+        mensajeErrorEdicion = "";
+
+        if (string.IsNullOrWhiteSpace(coachEdicion.NombreCompleto) || string.IsNullOrWhiteSpace(coachEdicion.Email))
+        {
+            mensajeErrorEdicion = "El nombre y el correo son obligatorios.";
+            return;
+        }
+
+        var correoLimpio = coachEdicion.Email.Trim().ToLower();
+
+        using var context = await DbFactory.CreateDbContextAsync();
+        var existeUsuario = await context.Usuarios.AnyAsync(u => u.Email != null && u.Email.Trim().ToLower() == correoLimpio && u.Id != coachEdicion.Id);
+        var existeCliente = await context.Clientes.AnyAsync(c => c.Email != null && c.Email.Trim().ToLower() == correoLimpio);
+
+        if (existeUsuario || existeCliente)
+        {
+            mensajeErrorEdicion = "Este correo ya está registrado en el sistema.";
+            return;
+        }
+
+        var coachDb = await context.Usuarios.FindAsync(coachEdicion.Id);
+        if (coachDb == null)
+        {
+            mensajeErrorEdicion = "No se encontró el coach seleccionado.";
+            return;
+        }
+
+        try
+        {
+            coachDb.NombreCompleto = coachEdicion.NombreCompleto.Trim();
+            coachDb.Email = correoLimpio;
+            coachDb.Rol = "Entrenador";
+            coachDb.Activo = coachEdicion.Activo;
+
+            if (!string.IsNullOrWhiteSpace(passwordEdicion))
+            {
+                coachDb.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordEdicion);
+            }
+
+            if (fotoCoachEdicion != null)
+            {
+                coachDb.FotoUrl = await ProfileImageService.GuardarImagenPerfilAsync(fotoCoachEdicion, "staff", coachDb.FotoUrl);
+            }
+
+            await context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorEdicion = ex.Message;
+            return;
+        }
+
+        CerrarModalEdicion();
+        await CargarEntrenadores();
+        await MostrarExitoTemporal($"El coach {coachDb.NombreCompleto} fue actualizado correctamente.");
+    }
+
+    private async Task SeleccionarFotoCoachEdicion(InputFileChangeEventArgs e)
+    {
+        mensajeErrorEdicion = "";
+        fotoCoachEdicion = e.File;
+        nombreFotoCoachEdicion = fotoCoachEdicion.Name;
+
+        try
+        {
+            fotoCoachEdicionPreviewUrl = await ProfileImageService.CrearVistaPreviaAsync(fotoCoachEdicion);
+        }
+        catch (Exception ex)
+        {
+            fotoCoachEdicion = null;
+            nombreFotoCoachEdicion = null;
+            fotoCoachEdicionPreviewUrl = null;
+            mensajeErrorEdicion = ex.Message;
         }
     }
 

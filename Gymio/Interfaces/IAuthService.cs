@@ -1,4 +1,4 @@
-﻿using Gymio.Models;
+using Gymio.Models;
 using Gymio.Services;
 
 namespace Gymio.Interfaces
@@ -10,6 +10,7 @@ namespace Gymio.Interfaces
 
         // hashea la contraseña antes de guardar al empleado en la base de datos
         Task<bool> CrearUsuarioFuerteAsync(Usuario nuevoUsuario, string passwordPlana);
+        Task<bool> ActualizarFotoUsuarioAsync(int usuarioId, string? fotoUrl);
         Task<LoginResult> AutenticarHibridoAsync(string email, string password,string tipoAcceso);
     }
 }
