@@ -1,5 +1,5 @@
 ﻿@page "/punto-venta"
-@attribute [Authorize(Roles = "Administrador, Empleado")]
+@attribute [Authorize(Roles = "Administrador,Empleado")]
 @rendermode InteractiveServer
 
 @using Gymio.Models
@@ -16,10 +16,10 @@
 
 <PageTitle>Punto de Venta - Gymio</PageTitle>
 
-<div class="pos-container d-flex overflow-hidden fade-in text-light">
+<div class="pos-container d-flex gap-4 overflow-hidden fade-in text-light">
     
     @* LADO IZQUIERDO: CATÁLOGO DE PRODUCTOS *@
-    <div class="products-section flex-grow-1 p-4 d-flex flex-column h-100">
+    <div class="products-section flex-grow-1 p-4 d-flex flex-column">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -96,7 +96,7 @@
     </div>
 
     @* LADO DERECHO: TICKET / CARRITO DE COMPRAS *@
-    <div class="cart-section bg-dark border-start border-secondary border-opacity-25 d-flex flex-column shadow-lg" style="width: 400px; min-width: 400px; z-index: 10;">
+    <div class="cart-section border border-secondary border-opacity-25 d-flex flex-column shadow-lg rounded-4 overflow-hidden" style="width: 400px; min-width: 400px; z-index: 10;">
         <div class="p-4 border-bottom border-secondary border-opacity-25 glass-panel">
             <h5 class="fw-bold text-white mb-0 tracking-wide">Ticket de Venta</h5>
         </div>
@@ -131,7 +131,7 @@
             }
         </div>
 
-        <div class="cart-checkout p-4 border-top border-secondary border-opacity-25" style="background-color: #040508;">
+        <div class="cart-checkout p-4 border-top border-secondary border-opacity-25">
             
             <div class="mb-3">
                 <label class="form-label text-muted small fw-bold text-uppercase tracking-widest">Socio / Cliente</label>
@@ -243,11 +243,25 @@
        ESTILOS DE LA PANTALLA (PUNTO DE VENTA)
        ========================================= */
     .pos-container { 
-        background-color: #06080c; 
+        background: transparent; 
         font-family: 'Segoe UI', Roboto, sans-serif;
-        margin: -1.5rem; 
-        height: calc(100vh - 3.5rem); 
-        width: calc(100% + 3rem);
+        min-height: calc(100vh - 7rem);
+        width: 100%;
+    }
+
+    .products-section, .cart-section {
+        background-color: #0f141e;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 1rem;
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+    }
+
+    .cart-section, .cart-checkout, .glass-panel {
+        background-color: #0f141e !important;
+    }
+
+    .product-card, .cart-items .bg-secondary {
+        background-color: #111827 !important;
     }
 
     .btn-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #000 !important; border: none; }
@@ -261,7 +275,7 @@
     .text-primary { color: #00FFA3 !important; }
     .text-cyan { color: #00B8D4 !important; }
     
-    .glass-panel { background: rgba(10, 13, 20, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
+    .glass-panel { backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
     .product-card { border: 1px solid rgba(255,255,255,0.03) !important; }
     .transition-hover { transition: all 0.2s ease; }
 
@@ -277,8 +291,13 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 163, 0.5); }
     
-    .tracking-widest { letter-spacing: 0.15em; }
-    .tracking-wide { letter-spacing: 0.05em; }
+    .tracking-widest { letter-spacing: 0; }
+    .tracking-wide { letter-spacing: 0; }
+
+    @@media (max-width: 992px) {
+        .pos-container { flex-direction: column; overflow: visible !important; }
+        .cart-section { width: 100% !important; min-width: 0 !important; }
+    }
 
     /* =========================================
        MAGIA PARA IMPRESIÓN (Térmica y Normal)

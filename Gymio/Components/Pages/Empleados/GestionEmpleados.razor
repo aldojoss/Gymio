@@ -8,18 +8,58 @@
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<GymioDbContext> DbFactory
 
+<PageTitle>Empleados - Gymio</PageTitle>
+
 <div class="page-container p-4 fade-in">
-    @* ENCABEZADO MODERNO (Mismo estilo que Clientes.razor) *@
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+    @* ENCABEZADO MODERNO *@
+    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center mb-4 gap-3">
         <div>
-            <h2 class="fw-black text-white mb-0">Gestión de Empleados</h2>
+            <h2 class="fw-black text-white mb-0"><i class="bi bi-person-gear text-info me-2"></i> Gestión de Empleados</h2>
             <span class="text-muted small tracking-widest text-uppercase">Control de acceso y credenciales del personal</span>
         </div>
         
-        <button class="btn btn-gradient rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover text-nowrap" @onclick="AbrirModalNuevo">
-            <i class="bi bi-person-plus-fill me-2"></i> Nuevo Empleado
-        </button>
+        <div class="d-flex gap-3 align-items-center w-100" style="max-width: 620px;">
+            <div class="input-group bg-dark border border-secondary border-opacity-25 rounded-pill overflow-hidden shadow-sm flex-grow-1">
+                <span class="input-group-text bg-transparent border-0 text-muted ps-4">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control bg-transparent border-0 text-white shadow-none py-2"
+                       placeholder="Buscar empleado..."
+                       @bind="filtroBusqueda" @bind:event="oninput" />
+            </div>
+
+            <button class="btn btn-gradient rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover text-nowrap" @onclick="AbrirModalNuevo">
+                <i class="bi bi-person-plus-fill me-2"></i> Nuevo Empleado
+            </button>
+        </div>
     </div>
+
+    @if (empleados != null)
+    {
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="metric-card border-info">
+                    <div class="metric-label text-info">Personal registrado</div>
+                    <h3 class="text-white fw-black mb-0">@empleados.Count</h3>
+                    <span class="text-muted small">Administradores y cajeros</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card border-success">
+                    <div class="metric-label text-success">Accesos activos</div>
+                    <h3 class="text-white fw-black mb-0">@empleados.Count(e => e.Activo)</h3>
+                    <span class="text-muted small">Usuarios habilitados</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card border-warning">
+                    <div class="metric-label text-warning">Administradores</div>
+                    <h3 class="text-white fw-black mb-0">@empleados.Count(e => e.Rol == RolesGymio.Administrador)</h3>
+                    <span class="text-muted small">Con permisos completos</span>
+                </div>
+            </div>
+        </div>
+    }
 
     @* TABLA ESTILO TARJETAS FLOTANTES *@
     @if (empleados == null)
@@ -28,12 +68,12 @@
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
         </div>
     }
-    else if (!empleados.Any())
+    else if (!empleadosFiltrados.Any())
     {
         <div class="card bg-dark border-secondary border-opacity-25 shadow-lg rounded-4 p-5 text-center fade-in">
             <i class="bi bi-people text-muted opacity-50 mb-3" style="font-size: 3rem;"></i>
-            <h5 class="fw-bold text-white mb-2">No hay empleados administrativos registrados</h5>
-            <p class="text-muted mb-0">Haz clic en 'Nuevo Empleado' para agregar a tu primer recepcionista o administrador.</p>
+            <h5 class="fw-bold text-white mb-2">No hay empleados para mostrar</h5>
+            <p class="text-muted mb-0">Ajusta la búsqueda o registra un nuevo usuario administrativo.</p>
         </div>
     }
     else
@@ -50,14 +90,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var emp in empleados)
+                    @foreach (var emp in empleadosFiltrados)
                     {
-                        <tr class="bg-dark shadow-sm transition-hover">
-                            <td class="ps-4">
+                        <tr class="modern-row slide-up">
+                            <td class="ps-4 py-3 rounded-start-4">
                                 <div class="d-flex align-items-center gap-3 py-2">
-                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
-                                         style="width: 42px; height: 42px; background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid rgba(255,255,255,0.1);">
-                                        @emp.NombreCompleto.Substring(0, 1).ToUpper()
+                                    <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-dark fw-black shadow-sm">
+                                        @(string.IsNullOrWhiteSpace(emp.NombreCompleto) ? "?" : emp.NombreCompleto.Substring(0, 1).ToUpper())
                                     </div>
                                     <div>
                                         <h6 class="mb-0 text-white fw-bold">@emp.NombreCompleto</h6>
@@ -79,7 +118,7 @@
                                     @(emp.Activo ? "Activo" : "Bloqueado")
                                 </span>
                             </td>
-                            <td class="text-end pe-4">
+                            <td class="text-end pe-4 rounded-end-4">
                                 <button class="btn btn-sm btn-outline-info fw-bold rounded-pill px-3 transition-hover me-2" @onclick="() => AbrirModalEditar(emp)">
                                     <i class="bi bi-pencil-square me-1"></i> Editar
                                 </button>
@@ -89,7 +128,7 @@
                                 </button>
                             </td>
                         </tr>
-                        <tr style="height: 10px; background-color: transparent;"><td colspan="5" class="p-0 border-0"></td></tr>
+                        <tr class="row-spacer"><td colspan="5"></td></tr>
                     }
                 </tbody>
             </table>
@@ -162,12 +201,91 @@
     </div>
 }
 
+<style>
+    .page-container { font-family: 'Segoe UI', Roboto, sans-serif; }
+    .fw-black { font-weight: 900 !important; }
+    .tracking-widest { letter-spacing: 0; }
+    .transition-hover { transition: all 0.2s ease; }
+    .transition-hover:hover { transform: translateY(-2px); }
+
+    .btn-gradient {
+        background: linear-gradient(135deg, #00FFA3, #00B8D4);
+        color: #040508;
+        border: none;
+    }
+    .btn-gradient:hover {
+        filter: brightness(1.08);
+        color: #040508;
+        box-shadow: 0 4px 15px rgba(0, 255, 163, 0.28) !important;
+    }
+
+    .metric-card {
+        background-color: #0f141e;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-left-width: 4px;
+        border-radius: 1rem;
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+        padding: 1.25rem;
+    }
+    .metric-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0; text-transform: uppercase; margin-bottom: 0.35rem; }
+
+    .avatar-sm {
+        width: 44px;
+        height: 44px;
+        background: linear-gradient(135deg, #00FFA3, #00B8D4);
+    }
+
+    .modern-table { border-collapse: separate; border-spacing: 0; }
+    .modern-row td {
+        background-color: #0f141e;
+        border-top: 1px solid rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        transition: all 0.2s ease;
+    }
+    .modern-row td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.03); }
+    .modern-row td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.03); }
+    .modern-row:hover td { background-color: #172033; }
+    .row-spacer td { height: 10px; padding: 0; background: transparent; border: none; }
+
+    .form-control:focus, .form-select:focus {
+        background-color: rgba(255,255,255,0.05) !important;
+        border-color: #00FFA3 !important;
+        color: white !important;
+        box-shadow: 0 0 0 0.25rem rgba(0, 255, 163, 0.18) !important;
+    }
+
+    .btn-outline-info { color: #00B8D4; border-color: rgba(0, 184, 212, 0.5); }
+    .btn-outline-info:hover { background-color: #00B8D4; color: #040508; border-color: #00B8D4; }
+
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    .slide-up { animation: slideUp 0.3s ease-out; }
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
 @code {
-    private List<Usuario> empleados;
+    private List<Usuario>? empleados;
     private Usuario empleadoActual = new Usuario();
     private bool mostrandoModal = false;
     private string passwordInput = "";
     private string mensajeError = "";
+    private string filtroBusqueda = "";
+
+    private List<Usuario> empleadosFiltrados
+    {
+        get
+        {
+            var fuente = empleados ?? new List<Usuario>();
+
+            return string.IsNullOrWhiteSpace(filtroBusqueda)
+            ? fuente
+            : fuente
+                .Where(e => (e.NombreCompleto ?? "").Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase)
+                    || (e.Email ?? "").Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase)
+                    || (e.Rol ?? "").Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -179,6 +297,8 @@
         using var context = await DbFactory.CreateDbContextAsync();
         empleados = await context.Usuarios
             .Where(u => u.Rol == RolesGymio.Empleado || u.Rol == RolesGymio.Administrador)
+            .OrderByDescending(u => u.Activo)
+            .ThenBy(u => u.NombreCompleto)
             .ToListAsync();
     }
 

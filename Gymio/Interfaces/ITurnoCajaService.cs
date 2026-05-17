@@ -7,5 +7,7 @@ namespace Gymio.Interfaces
         Task<TurnoCaja> AbrirTurnoAsync(int usuarioId, decimal montoInicial);
         Task<TurnoCaja?> ObtenerTurnoActivoAsync(int usuarioId);
         Task<TurnoCaja> CerrarTurnoAsync(int turnoId, decimal montoFisicoContado);
+        Task<List<TurnoCaja>> ObtenerTurnosAbiertosAsync();
+        Task<List<TurnoCaja>> ObtenerCierresRecientesAsync(int cantidad);
     }
 }

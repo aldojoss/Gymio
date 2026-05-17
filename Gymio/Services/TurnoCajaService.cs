@@ -22,7 +22,7 @@ namespace Gymio.Services
             var nuevoTurno = new TurnoCaja
             {
                 UsuarioId = usuarioId,
-                FechaApertura = DateTime.UtcNow,
+                FechaApertura = DateTime.Now,
                 MontoInicial = montoInicial,
                 EstaAbierto = true
             };
@@ -38,7 +38,7 @@ namespace Gymio.Services
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.TurnosCaja
                 .Include(t => t.Ventas)    
-        .Include(t => t.Egresos)
+                .Include(t => t.Egresos)
                 .FirstOrDefaultAsync(t => t.UsuarioId == usuarioId && t.EstaAbierto);
         }
 
@@ -63,13 +63,40 @@ namespace Gymio.Services
 
             turno.MontoCalculado = turno.MontoInicial + totalVentas - totalEgresos;
             turno.MontoRealFisico = montoFisicoContado;
-            turno.FechaCierre = DateTime.UtcNow;
+            turno.FechaCierre = DateTime.Now;
             turno.EstaAbierto = false;
 
             context.TurnosCaja.Update(turno);
             await context.SaveChangesAsync();
 
             return turno;
+        }
+
+        public async Task<List<TurnoCaja>> ObtenerTurnosAbiertosAsync()
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            return await context.TurnosCaja
+                .Include(t => t.Usuario)
+                .Include(t => t.Ventas)
+                .Include(t => t.Egresos)
+                .Where(t => t.EstaAbierto)
+                .OrderByDescending(t => t.FechaApertura)
+                .ToListAsync();
+        }
+
+        public async Task<List<TurnoCaja>> ObtenerCierresRecientesAsync(int cantidad)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            return await context.TurnosCaja
+                .Include(t => t.Usuario)
+                .Include(t => t.Ventas)
+                .Include(t => t.Egresos)
+                .Where(t => !t.EstaAbierto)
+                .OrderByDescending(t => t.FechaCierre)
+                .Take(cantidad)
+                .ToListAsync();
         }
     }
 }

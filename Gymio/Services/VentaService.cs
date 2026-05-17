@@ -2,7 +2,6 @@
 using Gymio.DTOs;
 using Gymio.Interfaces;
 using Gymio.Models;
-using Gymio.DTOs;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -102,7 +101,10 @@ namespace Gymio.Services
         public async Task<int> GetTotalVentasMesAsync()
         {
             using var _context = await _contextFactory.CreateDbContextAsync();
-            return await _context.Ventas.CountAsync(v => v.FechaVenta.Month == DateTime.Now.Month);
+            var inicioMes = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            var finMesExclusivo = inicioMes.AddMonths(1);
+
+            return await _context.Ventas.CountAsync(v => v.FechaVenta >= inicioMes && v.FechaVenta < finMesExclusivo);
         }
            
 
@@ -148,14 +150,14 @@ namespace Gymio.Services
         {
             using var _context = await _contextFactory.CreateDbContextAsync();
             var inicioMes = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-            var finMes = inicioMes.AddMonths(1).AddDays(-1);
+            var finMesExclusivo = inicioMes.AddMonths(1);
 
             var ingresos = await _context.Ventas
-                .Where(v => v.FechaVenta >= inicioMes && v.FechaVenta <= finMes)
+                .Where(v => v.FechaVenta >= inicioMes && v.FechaVenta < finMesExclusivo)
                 .SumAsync(v => (decimal?)v.Total) ?? 0;
 
             var egresos = await _context.Egresos
-                .Where(e => e.Fecha >= inicioMes && e.Fecha <= finMes)
+                .Where(e => e.Fecha >= inicioMes && e.Fecha < finMesExclusivo)
                 .SumAsync(e => (decimal?)e.Monto) ?? 0;
 
             return new ResumenFinancieroDto { Ingresos = ingresos, Egresos = egresos };

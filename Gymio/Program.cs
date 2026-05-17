@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
-using MongoDB.Driver;
 using Radzen;
 using System.Security.Claims;
 
@@ -47,6 +46,7 @@ builder.Services.AddScoped<IRegistroEntrenamientoService, RegistroEntrenamientoS
 builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<IPlanillaService, PagoPlanillaService>();
 builder.Services.AddScoped<ITurnoCajaService, TurnoCajaService>();
+builder.Services.AddScoped<IEgresoService, EgresoService>();
 builder.Services.AddRadzenComponents();
 
 builder.Services.AddSignalR();

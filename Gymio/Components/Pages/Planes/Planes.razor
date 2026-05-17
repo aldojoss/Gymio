@@ -1,6 +1,6 @@
 ﻿@page "/planes"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize (Roles = "Administrador")]
+@attribute [Authorize (Roles = "Administrador,Empleado")]
 @rendermode InteractiveServer
 @using Gymio.Models
 @using Gymio.Interfaces
