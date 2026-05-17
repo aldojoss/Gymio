@@ -1,0 +1,353 @@
+﻿@page "/caja"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Administrador, Empleado")]
+@inject AuthenticationStateProvider AuthStateProvider
+@using Gymio.Models
+@using Gymio.Interfaces
+@inject ITurnoCajaService CajaService
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<div class="page-container p-4 fade-in">
+    @* ENCABEZADO *@
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-black text-white mb-0"><i class="bi bi-cash-register text-info me-2"></i> Control de Caja</h2>
+            <span class="text-muted small tracking-widest text-uppercase">Arqueo y Flujo de Efectivo Diario</span>
+        </div>
+        
+        @if (TurnoActual != null && !MostrarResumenFinal)
+        {
+            <div class="badge bg-success bg-opacity-25 text-success border border-success px-4 py-2 rounded-pill fs-6 fw-bold shadow-sm fade-in">
+                <i class="bi bi-unlock-fill me-2"></i> CAJA ABIERTA Y OPERANDO
+            </div>
+        }
+        else if (TurnoActual == null && !Cargando)
+        {
+            <div class="badge bg-danger bg-opacity-25 text-danger border border-danger px-4 py-2 rounded-pill fs-6 fw-bold shadow-sm fade-in">
+                <i class="bi bi-lock-fill me-2"></i> CAJA CERRADA
+            </div>
+        }
+    </div>
+
+    @if (Cargando)
+    {
+        <div class="d-flex justify-content-center align-items-center py-5">
+            <div class="spinner-border text-info" role="status" style="width: 3rem; height: 3rem;"></div>
+        </div>
+    }
+    else if (TurnoActual == null)
+    {
+        @* ========================================================
+           ESTADO 1: PANTALLA DE BLOQUEO / APERTURA
+           ======================================================== *@
+        <div class="d-flex justify-content-center align-items-center mt-5 fade-in">
+            <div class="card bg-dark border-secondary border-opacity-25 shadow-lg rounded-4 p-5" style="max-width: 500px; width: 100%;">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-info bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="bi bi-safe2 text-info" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h3 class="fw-bold text-white mb-1">Apertura de Turno</h3>
+                    <p class="text-muted small">Ingresa la base de efectivo en gaveta para empezar.</p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-muted tracking-widest text-uppercase small fw-bold">Monto Inicial en Gaveta</label>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-dark text-info border-secondary border-opacity-50 fw-bold">C$</span>
+                        <input type="number" class="form-control bg-dark text-white border-secondary border-opacity-50 shadow-none fw-bold fs-4" @bind="MontoInicialInput" min="0" placeholder="0.00" />
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(MensajeError))
+                {
+                    <div class="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger py-2 d-flex align-items-center small mb-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> @MensajeError
+                    </div>
+                }
+
+                <button class="btn btn-info w-100 rounded-pill py-3 fw-bold fs-5 shadow transition-hover" @onclick="ManejarApertura">
+                    <i class="bi bi-key-fill me-2"></i> Abrir Caja Ahora
+                </button>
+            </div>
+        </div>
+    }
+    else if (!MostrarResumenFinal)
+    {
+        @* ========================================================
+           ESTADO 2: PANEL OPERATIVO EN VIVO
+           ======================================================== *@
+        <div class="fade-in">
+            <div class="row g-4 mb-5">
+                <div class="col-md-3">
+                    <div class="card bg-dark border-info border-opacity-25 shadow-sm rounded-4 h-100 transition-hover">
+                        <div class="card-body p-4">
+                            <h6 class="text-info text-uppercase tracking-widest small fw-bold mb-2"><i class="bi bi-wallet2 me-2"></i>Apertura</h6>
+                            <h2 class="text-white fw-black mb-0">C$ @TurnoActual.MontoInicial.ToString("N2")</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark border-success border-opacity-25 shadow-sm rounded-4 h-100 transition-hover">
+                        <div class="card-body p-4">
+                            <h6 class="text-success text-uppercase tracking-widest small fw-bold mb-2"><i class="bi bi-graph-up-arrow me-2"></i>Ingresos (+)</h6>
+                            <h2 class="text-white fw-black mb-0">C$ @MontoVentasAcumuladas.ToString("N2")</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark border-danger border-opacity-25 shadow-sm rounded-4 h-100 transition-hover">
+                        <div class="card-body p-4">
+                            <h6 class="text-danger text-uppercase tracking-widest small fw-bold mb-2"><i class="bi bi-graph-down-arrow me-2"></i>Egresos (-)</h6>
+                            <h2 class="text-white fw-black mb-0">C$ @MontoEgresosAcumulados.ToString("N2")</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-lg rounded-4 h-100 transition-hover" style="background: linear-gradient(135deg, #0f172a, #1e293b); border: 1px solid rgba(13, 202, 240, 0.3);">
+                        <div class="card-body p-4 text-center">
+                            <h6 class="text-info text-uppercase tracking-widest small fw-bold mb-2">Total Calculado en Sistema</h6>
+                            <h1 class="text-info fw-black mb-0" style="text-shadow: 0 0 15px rgba(13,202,240,0.4);">
+                                C$ @((TurnoActual.MontoInicial + MontoVentasAcumuladas - MontoEgresosAcumulados).ToString("N2"))
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <div class="card bg-dark border-secondary border-opacity-25 shadow-sm rounded-4 h-100 p-4">
+                        <h5 class="fw-bold text-white mb-4">Accesos Directos</h5>
+                        <div class="d-grid gap-3">
+                            <button class="btn btn-outline-info rounded-4 p-4 text-start d-flex align-items-center transition-hover" @onclick='() => Navigation.NavigateTo("/punto-venta")'>
+                                <i class="bi bi-shop fs-1 me-4"></i>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Ir al Punto de Venta</h5>
+                                    <span class="text-muted small">Cobrar membresías, suplementos o agua. El ingreso se suma a tu turno.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-outline-danger rounded-4 p-4 text-start d-flex align-items-center transition-hover" @onclick='() => Navigation.NavigateTo("/egresos")'>
+                                <i class="bi bi-cart-dash fs-1 me-4"></i>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Registrar Salida de Dinero</h5>
+                                    <span class="text-muted small">Gastos de limpieza, pagos a proveedores. El gasto se resta de tu gaveta.</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="card bg-dark border-danger border-opacity-25 shadow-lg rounded-4 h-100 p-4 position-relative overflow-hidden">
+                        <div class="position-absolute top-0 end-0 p-3 opacity-10">
+                            <i class="bi bi-shield-lock-fill" style="font-size: 8rem;"></i>
+                        </div>
+                        
+                        <div class="position-relative z-1">
+                            <h5 class="fw-bold text-white mb-2 text-danger">Arqueo y Cierre</h5>
+                            <p class="text-muted small mb-4">Saca todo el dinero de la caja registradora, cuéntalo y escribe el total exacto aquí para auditar tu turno.</p>
+                            
+                            <div class="mb-4">
+                                <label class="form-label text-muted tracking-widest text-uppercase small fw-bold">Efectivo Físico Contado</label>
+                                <div class="input-group input-group-lg shadow-sm">
+                                    <span class="input-group-text bg-dark text-danger border-secondary border-opacity-50 fw-bold">C$</span>
+                                    <input type="number" class="form-control bg-dark text-white border-secondary border-opacity-50 shadow-none fw-bold fs-3 text-danger" @bind="MontoFisicoCierreInput" min="0" placeholder="0.00" />
+                                </div>
+                            </div>
+
+                            <button class="btn btn-danger w-100 rounded-pill py-3 fw-bold fs-6 shadow transition-hover" @onclick="ManejarCierre">
+                                <i class="bi bi-lock-fill me-2"></i> Procesar Cierre Definitivo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* ========================================================
+           ESTADO 3: RECIBO DE ARQUEO / AUDITORÍA
+           ======================================================== *@
+        <div class="d-flex justify-content-center align-items-center mt-4 fade-in">
+            <div class="card bg-dark border @(ResumenFinal.Diferencia == 0 ? "border-success" : ResumenFinal.Diferencia < 0 ? "border-danger" : "border-warning") border-2 shadow-lg rounded-4 p-5" style="max-width: 550px; width: 100%;">
+                
+                <div class="text-center mb-4">
+                    <i class="bi @(ResumenFinal.Diferencia == 0 ? "bi-check-circle-fill text-success" : ResumenFinal.Diferencia < 0 ? "bi-x-octagon-fill text-danger" : "bi-exclamation-triangle-fill text-warning")" style="font-size: 4rem;"></i>
+                    <h3 class="fw-black text-white mt-3 mb-1">Cierre de Turno Completado</h3>
+                    <p class="text-muted small">Resumen oficial de auditoría contable.</p>
+                </div>
+
+                <div class="bg-dark border border-secondary border-opacity-25 rounded-3 p-4 mb-4 font-monospace small">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Fondo Inicial:</span>
+                        <span class="text-white">C$ @ResumenFinal.MontoInicial.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-success">(+) Ventas:</span>
+                        <span class="text-success">C$ @MontoVentasAcumuladas.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 border-bottom border-secondary border-opacity-25 pb-3">
+                        <span class="text-danger">(-) Egresos:</span>
+                        <span class="text-danger">C$ @MontoEgresosAcumulados.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold mb-2 fs-6">
+                        <span class="text-info">CALCULADO POR SISTEMA:</span>
+                        <span class="text-info">C$ @ResumenFinal.MontoCalculado.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold fs-5 mt-3 pt-3 border-top border-secondary border-opacity-25">
+                        <span class="text-white">EFECTIVO FÍSICO ENTREGADO:</span>
+                        <span class="text-white">C$ @ResumenFinal.MontoRealFisico.ToString("N2")</span>
+                    </div>
+                </div>
+
+                <div class="alert @(ResumenFinal.Diferencia == 0 ? "bg-success bg-opacity-10 text-success border-success" : ResumenFinal.Diferencia < 0 ? "bg-danger bg-opacity-10 text-danger border-danger" : "bg-warning bg-opacity-10 text-warning border-warning") text-center border p-3 rounded-4" role="alert">
+                    <h4 class="fw-black mb-1">DIFERENCIA: C$ @ResumenFinal.Diferencia.ToString("N2")</h4>
+                    <p class="mb-0 small fw-bold">
+                        @if (ResumenFinal.Diferencia == 0)
+                        {
+                            <text>¡Cuadre perfecto! Sin anomalías.</text>
+                        }
+                        else if (ResumenFinal.Diferencia < 0)
+                        {
+
+                            <text>Faltante reportado. El empleado debe reponer el saldo.</text>
+                        }
+                        else
+                        {
+
+                            <text>Sobrante de caja. Ingreso no justificado.</text>
+                        }
+                    </p>
+                </div>
+
+                <button class="btn btn-outline-secondary w-100 rounded-pill py-3 fw-bold mt-4 transition-hover" @onclick="ReiniciarVista">
+                    <i class="bi bi-arrow-repeat me-2"></i> Cerrar Panel
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool Cargando { get; set; } = true;
+    private bool MostrarResumenFinal { get; set; } = false;
+    private TurnoCaja? TurnoActual { get; set; }
+    private TurnoCaja? ResumenFinal { get; set; }
+
+    private decimal MontoInicialInput { get; set; }
+    private decimal MontoFisicoCierreInput { get; set; }
+    private string MensajeError { get; set; } = "";
+
+    private decimal MontoVentasAcumuladas { get; set; } = 0;
+    private decimal MontoEgresosAcumulados { get; set; } = 0;
+    
+   
+    private int UsuarioIdLogueado { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. OBTENEMOS EL USUARIO QUE INICIÓ SESIÓaN
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            // Extraemos el ID que se guardo en la Cookie (ClaimTypes.NameIdentifier)
+            var claimId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            
+            if (int.TryParse(claimId, out int idObtenido))
+            {
+                UsuarioIdLogueado = idObtenido;
+            }
+        }
+
+        // por si se crashea la mrd
+        if (UsuarioIdLogueado == 0) UsuarioIdLogueado = 2;
+
+        await CargarEstadoCaja();
+    }
+
+    private async Task CargarEstadoCaja()
+    {
+        Cargando = true;
+        MensajeError = "";
+        
+        TurnoActual = await CajaService.ObtenerTurnoActivoAsync(UsuarioIdLogueado);
+        
+        if (TurnoActual != null)
+        {
+            MontoVentasAcumuladas = TurnoActual.Ventas?.Sum(v => v.Total) ?? 0;
+            MontoEgresosAcumulados = TurnoActual.Egresos?.Sum(e => e.Monto) ?? 0;
+        }
+
+        Cargando = false;
+    }
+
+    private async Task ManejarApertura()
+    {
+        if (MontoInicialInput < 0)
+        {
+            MensajeError = "La gaveta no puede iniciar con números negativos.";
+            return;
+        }
+
+        await CajaService.AbrirTurnoAsync(UsuarioIdLogueado, MontoInicialInput);
+        await CargarEstadoCaja();
+    }
+
+    private async Task ManejarCierre()
+    {
+      
+        if (MontoFisicoCierreInput < 0)
+        {
+            await JS.InvokeVoidAsync("alert", "Error: El dinero físico contado no puede ser un valor negativo.");
+            return;
+        }
+
+        if (TurnoActual != null)
+        {
+    
+            decimal esperado = TurnoActual.MontoInicial + MontoVentasAcumuladas - MontoEgresosAcumulados;
+            decimal diferencia = Math.Abs(MontoFisicoCierreInput - esperado);
+
+     
+            if (diferencia > 500 || (MontoFisicoCierreInput == 0 && esperado > 0))
+            {
+                string mensajeAdvertencia = $"¡ATENCIÓN CAJERO!\n\n" +
+                                            $"El sistema esperaba: C$ {esperado.ToString("N2")}\n" +
+                                            $"Tú ingresaste: C$ {MontoFisicoCierreInput.ToString("N2")}\n\n" +
+                                            $"Hay un descuadre enorme de C$ {diferencia.ToString("N2")}.\n" +
+                                            $"¿Estás completamente seguro de que contaste bien los billetes antes de cerrar?";
+
+                
+                bool confirmado = await JS.InvokeAsync<bool>("confirm", mensajeAdvertencia);
+                
+
+                if (!confirmado)
+                {
+                    return;
+                }
+            }
+
+
+            Cargando = true;
+            StateHasChanged(); 
+            
+            ResumenFinal = await CajaService.CerrarTurnoAsync(TurnoActual.Id, MontoFisicoCierreInput);
+            MostrarResumenFinal = true;
+            
+            Cargando = false;
+        }
+    }
+
+    private void ReiniciarVista()
+    {
+        MostrarResumenFinal = false;
+        ResumenFinal = null;
+        TurnoActual = null;
+        MontoInicialInput = 0;
+        MontoFisicoCierreInput = 0;
+    }
+}

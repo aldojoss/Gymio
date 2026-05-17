@@ -46,6 +46,7 @@ builder.Services.AddScoped<IChatService,ChatService >();
 builder.Services.AddScoped<IRegistroEntrenamientoService, RegistroEntrenamientoService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<IPlanillaService, PagoPlanillaService>();
+builder.Services.AddScoped<ITurnoCajaService, TurnoCajaService>();
 builder.Services.AddRadzenComponents();
 
 builder.Services.AddSignalR();
@@ -80,6 +81,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -144,7 +146,12 @@ app.MapPost("/api/login", async ([FromForm] string email, [FromForm] string pass
     return Results.Redirect("/login?error=Credenciales incorrectas");
 }).DisableAntiforgery();
 // =====================================================================
-
+//ahora para el cierre de sesion
+app.MapGet("/api/logout", async (HttpContext context) =>
+{
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.Redirect("/login");
+});
 // mapeamos el hub de SignalR para la comunicación en tiempo real del chat
 app.MapHub<ChatHub>("/chathub");
 

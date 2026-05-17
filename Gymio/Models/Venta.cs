@@ -29,6 +29,9 @@ namespace Gymio.Models
             public string MetodoPago { get; set; } // "Efectivo", "Tarjeta", "Transferencia"
 
             public ICollection<VentaDetalle> Detalles { get; set; }
-        }
+
+        public int? TurnoCajaId { get; set; }
+        public TurnoCaja? TurnoCaja { get; set; }
+    }
     
 }

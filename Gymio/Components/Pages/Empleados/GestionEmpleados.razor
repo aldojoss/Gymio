@@ -1,0 +1,280 @@
+﻿@page "/admin/empleados"
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+
+@using Gymio.Models
+@using Gymio.Data
+@using Gymio.Constant
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<GymioDbContext> DbFactory
+
+<div class="page-container p-4 fade-in">
+    @* ENCABEZADO MODERNO (Mismo estilo que Clientes.razor) *@
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 gap-3">
+        <div>
+            <h2 class="fw-black text-white mb-0">Gestión de Empleados</h2>
+            <span class="text-muted small tracking-widest text-uppercase">Control de acceso y credenciales del personal</span>
+        </div>
+        
+        <button class="btn btn-gradient rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover text-nowrap" @onclick="AbrirModalNuevo">
+            <i class="bi bi-person-plus-fill me-2"></i> Nuevo Empleado
+        </button>
+    </div>
+
+    @* TABLA ESTILO TARJETAS FLOTANTES *@
+    @if (empleados == null)
+    {
+        <div class="d-flex justify-content-center align-items-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+        </div>
+    }
+    else if (!empleados.Any())
+    {
+        <div class="card bg-dark border-secondary border-opacity-25 shadow-lg rounded-4 p-5 text-center fade-in">
+            <i class="bi bi-people text-muted opacity-50 mb-3" style="font-size: 3rem;"></i>
+            <h5 class="fw-bold text-white mb-2">No hay empleados administrativos registrados</h5>
+            <p class="text-muted mb-0">Haz clic en 'Nuevo Empleado' para agregar a tu primer recepcionista o administrador.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive custom-scrollbar pb-3">
+            <table class="table modern-table table-borderless align-middle mb-0" style="min-width: 900px;">
+                <thead>
+                    <tr class="text-muted text-uppercase small tracking-widest" style="font-size: 0.75rem;">
+                        <th class="ps-4 pb-3">Nombre Completo</th>
+                        <th class="pb-3">Credenciales</th>
+                        <th class="pb-3">Nivel de Acceso</th>
+                        <th class="pb-3">Estado</th>
+                        <th class="text-end pe-4 pb-3">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var emp in empleados)
+                    {
+                        <tr class="bg-dark shadow-sm transition-hover">
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3 py-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                                         style="width: 42px; height: 42px; background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid rgba(255,255,255,0.1);">
+                                        @emp.NombreCompleto.Substring(0, 1).ToUpper()
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0 text-white fw-bold">@emp.NombreCompleto</h6>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="text-muted"><i class="bi bi-envelope me-2"></i>@emp.Email</span>
+                            </td>
+                            <td>
+                                <span class="badge @(emp.Rol == RolesGymio.Administrador ? "bg-primary bg-opacity-25 text-primary border border-primary" : "bg-info bg-opacity-25 text-info border border-info") rounded-pill px-3 py-1">
+                                    <i class="bi @(emp.Rol == RolesGymio.Administrador ? "bi-shield-lock-fill" : "bi-person-workspace") me-1"></i>
+                                    @emp.Rol
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge @(emp.Activo ? "bg-success bg-opacity-25 text-success border border-success" : "bg-danger bg-opacity-25 text-danger border border-danger") rounded-pill px-3 py-1">
+                                    <i class="bi @(emp.Activo ? "bi-check-circle-fill" : "bi-x-circle-fill") me-1"></i>
+                                    @(emp.Activo ? "Activo" : "Bloqueado")
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-outline-info fw-bold rounded-pill px-3 transition-hover me-2" @onclick="() => AbrirModalEditar(emp)">
+                                    <i class="bi bi-pencil-square me-1"></i> Editar
+                                </button>
+                                <button class="btn btn-sm @(emp.Activo ? "btn-outline-danger" : "btn-outline-success") fw-bold rounded-pill px-3 transition-hover" @onclick="() => AlternarEstado(emp)">
+                                    <i class="bi @(emp.Activo ? "bi-person-dash-fill" : "bi-person-check-fill") me-1"></i>
+                                    @(emp.Activo ? "Bloquear" : "Activar")
+                                </button>
+                            </td>
+                        </tr>
+                        <tr style="height: 10px; background-color: transparent;"><td colspan="5" class="p-0 border-0"></td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* MODAL DEL DISEÑO OFICIAL (Igual al de Clientes.razor) *@
+@if (mostrandoModal)
+{
+    <div class="modal fade show d-block fade-in" tabindex="-1" style="background-color: rgba(4, 5, 8, 0.8); backdrop-filter: blur(8px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary border-opacity-25 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 p-4">
+                    <h5 class="modal-title fw-black text-white d-flex align-items-center">
+                        <i class="bi @(empleadoActual.Id == 0 ? "bi-person-plus" : "bi-pencil-square") text-primary me-2 fs-4"></i>
+                        <span>@(empleadoActual.Id == 0 ? "Registrar Personal" : "Editar Empleado")</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white opacity-50 shadow-none" @onclick="CerrarModal"></button>
+                </div>
+                
+                <div class="modal-body p-4">
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <label class="form-label text-muted tracking-widest text-uppercase small fw-bold">Nombre Completo</label>
+                            <input type="text" class="form-control bg-dark text-white border-secondary border-opacity-50 shadow-none" @bind="empleadoActual.NombreCompleto" placeholder="Ej: Aldo Avilés" />
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label text-muted tracking-widest text-uppercase small fw-bold">Correo Electrónico (Usuario)</label>
+                            <input type="email" class="form-control bg-dark text-white border-secondary border-opacity-50 shadow-none" @bind="empleadoActual.Email" placeholder="admin@gymio.com" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted tracking-widest text-uppercase small fw-bold">Rol en Sistema</label>
+                            <select class="form-select bg-dark text-white border-secondary border-opacity-50 shadow-none" @bind="empleadoActual.Rol">
+                                <option value="@RolesGymio.Empleado">Cajero / Empleado</option>
+                                <option value="@RolesGymio.Administrador">Administrador</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-muted tracking-widest text-uppercase small fw-bold">
+                                Contraseña
+                                @if (empleadoActual.Id != 0)
+                                {
+                                    <span class="text-warning text-lowercase" style="font-size: 0.6rem;">(opcional)</span>
+                                }
+                            </label>
+                            <input type="password" class="form-control bg-dark text-white border-secondary border-opacity-50 shadow-none" @bind="passwordInput" placeholder="********" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(mensajeError))
+                    {
+                        <div class="alert alert-danger mt-4 mb-0 bg-danger bg-opacity-10 border-danger text-danger d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @mensajeError
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer border-top border-secondary border-opacity-25 p-4" style="background-color: rgba(255,255,255,0.02);">
+                    <button type="button" class="btn btn-link text-muted text-decoration-none fw-bold px-4 transition-hover" @onclick="CerrarModal">Cancelar</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm transition-hover" @onclick="GuardarEmpleado">
+                        <i class="bi bi-save me-2"></i> Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Usuario> empleados;
+    private Usuario empleadoActual = new Usuario();
+    private bool mostrandoModal = false;
+    private string passwordInput = "";
+    private string mensajeError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarEmpleados();
+    }
+
+    private async Task CargarEmpleados()
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        empleados = await context.Usuarios
+            .Where(u => u.Rol == RolesGymio.Empleado || u.Rol == RolesGymio.Administrador)
+            .ToListAsync();
+    }
+
+    private void AbrirModalNuevo()
+    {
+        empleadoActual = new Usuario { Rol = RolesGymio.Empleado, Activo = true };
+        passwordInput = "";
+        mensajeError = "";
+        mostrandoModal = true;
+    }
+
+    private void AbrirModalEditar(Usuario emp)
+    {
+        empleadoActual = new Usuario
+        {
+            Id = emp.Id,
+            NombreCompleto = emp.NombreCompleto,
+            Email = emp.Email,
+            Rol = emp.Rol,
+            Activo = emp.Activo,
+            PasswordHash = emp.PasswordHash
+        };
+        passwordInput = "";
+        mensajeError = "";
+        mostrandoModal = true;
+    }
+
+    private void CerrarModal()
+    {
+        mostrandoModal = false;
+    }
+
+    private async Task GuardarEmpleado()
+    {
+        mensajeError = "";
+
+        if (string.IsNullOrWhiteSpace(empleadoActual.NombreCompleto) || string.IsNullOrWhiteSpace(empleadoActual.Email))
+        {
+            mensajeError = "El nombre y el correo son obligatorios.";
+            return;
+        }
+
+        using var context = await DbFactory.CreateDbContextAsync();
+
+        var existeCorreo = await context.Usuarios
+            .AnyAsync(u => u.Email == empleadoActual.Email && u.Id != empleadoActual.Id);
+        
+        if (existeCorreo)
+        {
+            mensajeError = "Ya existe un usuario con este correo.";
+            return;
+        }
+
+        if (empleadoActual.Id == 0)
+        {
+            if (string.IsNullOrWhiteSpace(passwordInput))
+            {
+                mensajeError = "La contraseña es requerida para el registro.";
+                return;
+            }
+
+            empleadoActual.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordInput);
+            context.Usuarios.Add(empleadoActual);
+        }
+        else
+        {
+            var empleadoDb = await context.Usuarios.FindAsync(empleadoActual.Id);
+            if (empleadoDb != null)
+            {
+                empleadoDb.NombreCompleto = empleadoActual.NombreCompleto;
+                empleadoDb.Email = empleadoActual.Email;
+                empleadoDb.Rol = empleadoActual.Rol;
+                
+                if (!string.IsNullOrWhiteSpace(passwordInput))
+                {
+                    empleadoDb.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordInput);
+                }
+
+                context.Usuarios.Update(empleadoDb);
+            }
+        }
+
+        await context.SaveChangesAsync();
+        CerrarModal();
+        await CargarEmpleados();
+    }
+
+    private async Task AlternarEstado(Usuario emp)
+    {
+        using var context = await DbFactory.CreateDbContextAsync();
+        var empleadoDb = await context.Usuarios.FindAsync(emp.Id);
+        if (empleadoDb != null)
+        {
+            empleadoDb.Activo = !empleadoDb.Activo;
+            await context.SaveChangesAsync();
+            await CargarEmpleados();
+        }
+    }
+}

@@ -6,9 +6,12 @@
 @using Gymio.Interfaces
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+
 @inject IVentaService VentaService
 @inject IClienteService ClienteService
+@inject ITurnoCajaService CajaService // NUEVO: Inyectamos el servicio de la Caja
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation // NUEVO: Para redirigir si no hay caja abierta
 @inject IJSRuntime JS
 
 <PageTitle>Punto de Venta - Gymio</PageTitle>
@@ -22,6 +25,14 @@
             <div>
                 <h2 class="fw-black text-white mb-0"><i class="bi bi-shop me-2 text-primary"></i>Punto de Venta</h2>
                 <span class="text-muted small tracking-widest text-uppercase">Ventas rápidas de mostrador</span>
+                
+                @* NUEVO: Etiqueta avisando a qué turno se está sumando la plata *@
+                @if (turnoActivo != null)
+                {
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success ms-3 shadow-sm" style="font-size: 0.75rem;">
+                        <i class="bi bi-unlock-fill me-1"></i> Caja Abierta (#@turnoActivo.Id)
+                    </span>
+                }
             </div>
             
             <div class="input-group bg-dark border border-secondary border-opacity-25 rounded-pill overflow-hidden shadow-sm" style="max-width: 350px;">
@@ -177,6 +188,7 @@
                             <p class="mb-0 fw-bold">TICKET DE VENTA</p>
                             <p class="mb-0">Fecha: @ultimaVenta.FechaVenta.ToString("dd/MM/yyyy hh:mm tt")</p>
                             <p class="mb-0">Pago: @ultimaVenta.MetodoPago</p>
+                            <p class="mb-0">Turno Caja: #@(ultimaVenta.TurnoCajaId?.ToString() ?? "N/A")</p>
                             @if(ultimaVenta.ClienteId.HasValue && ultimaVenta.ClienteId > 0)
                             {
                                 var nombreCli = listaClientesActivos.FirstOrDefault(c => c.Id == ultimaVenta.ClienteId)?.Nombre;
@@ -272,12 +284,10 @@
        MAGIA PARA IMPRESIÓN (Térmica y Normal)
        ========================================= */
     @@media print {
-        /* 1. Apagamos la UI del sistema oscuro para que no gaste tinta */
         .pos-container, header, nav, .sidebar { 
             display: none !important; 
         }
         
-        /* 2. "Desarmamos" la caja flotante de Bootstrap para que no recorte texto */
         .modal {
             position: static !important;
             display: block !important;
@@ -294,13 +304,10 @@
             background: transparent !important;
         }
 
-        /* 3. Escondemos la sombra negra y los botones del modal de impresión */
         .modal-footer, .modal-backdrop { 
             display: none !important; 
         }
 
-        /* 4. Forzamos que el ticket mida exactamente lo de la impresora térmica (80mm).
-              Si usás impresora normal, saldrá alineado a la izquierda. */
         #ticket-impresion { 
             width: 80mm !important; 
             margin: 0 !important;
@@ -313,19 +320,18 @@
 
 @code {
     private int idCajeroActual;
+    private TurnoCaja? turnoActivo = null; // NUEVO: Para guardar el turno abierto
+
     private bool productosCargando = true;
     private bool procesandoVenta = false;
     
-    // Variables Cliente y Pago
     private List<Cliente> listaClientesActivos = new();
     private int clienteSeleccionadoId = 0;
     private string metodoPagoSeleccionado = "Efectivo";
     
-    // Variables Recibo
     private bool mostrarRecibo = false;
     private Venta? ultimaVenta = null;
 
-    // Variables Buscador (Filtrado en Memoria)
     private string _filtroBusqueda = "";
     private string filtroBusqueda 
     {
@@ -354,7 +360,20 @@
         var user = authState.User;
         if (user.Identity?.IsAuthenticated == true)
         {
-            idCajeroActual = int.Parse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "1");
+            if (int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int uid))
+            {
+                idCajeroActual = uid;
+            }
+        }
+
+        // NUEVO: Verificamos que el empleado tenga un turno abierto ANTES de dejarlo vender
+        turnoActivo = await CajaService.ObtenerTurnoActivoAsync(idCajeroActual);
+        
+        if (turnoActivo == null)
+        {
+            // Si la caja está cerrada, lo pateamos a la pantalla de abrir caja
+            Navigation.NavigateTo("/caja");
+            return;
         }
 
         await CargarCatalogo();
@@ -399,6 +418,9 @@
 
     private async Task ProcesarCobro()
     {
+        // Por seguridad extra (por si acaso el turno se cerró mientras estaba eligiendo productos)
+        if (turnoActivo == null) return; 
+
         procesandoVenta = true;
         
         try 
@@ -407,13 +429,15 @@
             {
                 UsuarioId = idCajeroActual,
                 ClienteId = clienteSeleccionadoId > 0 ? clienteSeleccionadoId : null, 
+                
+                // NUEVO: ¡Aquí ocurre la magia! Le pasamos el ID del Turno a la Venta
+                TurnoCajaId = turnoActivo.Id,
+
                 FechaVenta = DateTime.Now,
                 Total = TotalCarrito,
                 MetodoPago = metodoPagoSeleccionado,
                 Detalles = carrito.Select(item => new VentaDetalle
                 {
-                    // Descomentar la siguiente línea si tenés ProductoId en tu modelo VentaDetalle
-                    // ProductoId = item.Producto.Id, 
                     Concepto = item.Producto.Nombre,
                     Cantidad = item.Cantidad,
                     ProductoId = item.Producto.Id,
@@ -424,11 +448,9 @@
 
             await VentaService.CrearVentaAsync(nuevaVenta);
             
-            // guardamos la venta finalizada para imprimirla
             ultimaVenta = nuevaVenta;
             mostrarRecibo = true; 
             
-            // Limpieza del carrito
             carrito.Clear();
             clienteSeleccionadoId = 0; 
             

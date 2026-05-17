@@ -22,5 +22,9 @@ namespace Gymio.Models
         public int EgresoId { get; set; }
         [ForeignKey("EgresoId")]
         public Egreso? EgresoGenerado { get; set; }
+
+     
+        public int? ProveedorId { get; set; }
+        public Proveedor? Proveedor { get; set; }
     }
 }

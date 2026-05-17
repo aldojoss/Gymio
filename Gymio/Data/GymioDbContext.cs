@@ -23,6 +23,10 @@ namespace Gymio.Data
         public DbSet<Egreso> Egresos { get; set; }
         public DbSet<PagoPlanilla> PagosPlanilla { get; set; }
         public DbSet<CompraInventario> ComprasInventario { get; set; }
+        public DbSet<Proveedor> Proveedores { get; set; }
+        public DbSet<Maquina> Maquinas { get; set; }
+        public DbSet<MantenimientoMaquina> MantenimientosMaquinas { get; set; }
+        public DbSet<TurnoCaja> TurnosCaja { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

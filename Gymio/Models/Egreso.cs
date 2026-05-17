@@ -30,5 +30,8 @@ namespace Gymio.Models
         public int CategoriaEgresoId { get; set; }
         [ForeignKey("CategoriaEgresoId")]
         public CategoriaEgreso? Categoria { get; set; }
+
+        public int? TurnoCajaId { get; set; }
+        public TurnoCaja? TurnoCaja { get; set; }
     }
 }
