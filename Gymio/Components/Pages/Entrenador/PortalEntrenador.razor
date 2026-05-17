@@ -1,4 +1,4 @@
-﻿@page "/portal-entrenador"
+@page "/portal-entrenador"
 @attribute [Authorize(Roles = "Entrenador, Administrador")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @implements IAsyncDisposable
@@ -11,390 +11,720 @@
 @inject IChatService ChatService
 @inject IClienteService ClienteService
 @inject IRutinaService RutinaService
+@inject IEjercicioCatalogoService EjercicioCatalogoService
 @inject IRegistroEntrenamientoService RegistroEntrenamientoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
-<div class="gymio-admin-container d-flex text-light overflow-hidden">
-    
-    @* PANEL LATERAL: MIS ATLETAS *@
-    <div class="sidebar glass-panel d-flex flex-column border-end border-secondary border-opacity-25 shadow-lg">
-        <div class="p-4 border-bottom border-secondary border-opacity-25 d-flex align-items-center">
-            <h5 class="fw-black text-uppercase tracking-widest text-primary mb-0 flex-grow-1">
-                <i class="bi bi-lightning-charge-fill me-2"></i>Mis Atletas
-            </h5>
+<PageTitle>Portal Entrenador - Gymio</PageTitle>
+
+<div class="coach-shell text-light">
+    <aside class="coach-sidebar">
+        <div class="sidebar-header">
+            <div>
+                <h5 class="fw-black text-primary mb-0"><i class="bi bi-lightning-charge-fill me-2"></i>Mis Atletas</h5>
+                <span class="text-muted small">Clientes asignados</span>
+            </div>
+            <span class="badge bg-primary text-dark rounded-pill">@misClientes.Count</span>
         </div>
-        
-        <div class="client-list overflow-auto p-3 flex-grow-1 custom-scrollbar">
-            @if (misClientes == null)
+
+        <div class="client-list custom-scrollbar">
+            @if (cargandoClientes)
             {
                 <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
             }
             else if (!misClientes.Any())
             {
-                <div class="text-center mt-5 fade-in">
-                    <div class="bg-dark rounded-circle p-4 d-inline-block mb-3 border border-secondary border-opacity-25 shadow">
-                        <i class="bi bi-person-slash display-5 text-white-50"></i>
-                    </div>
-                    <h5 class="fw-bold text-white mb-2 tracking-wide">Sin atletas</h5>
-                    <p class="text-muted small px-3">No tienes socios asignados a tu cargo aún.</p>
+                <div class="empty-state">
+                    <i class="bi bi-person-slash display-6 text-white-50"></i>
+                    <h6 class="text-white fw-bold mt-3">Sin atletas</h6>
+                    <p class="text-muted small mb-0">Aún no tienes socios asignados.</p>
                 </div>
             }
             else
             {
                 @foreach (var cliente in misClientes)
                 {
-                    bool isActive = clienteSeleccionado?.Id == cliente.Id;
-                    <div class="client-card p-3 mb-3 rounded-4 transition-all @(isActive ? "active-client shadow-lg" : "hover-client")"
-                         @onclick="() => SeleccionarCliente(cliente)">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="avatar bg-gradient-primary text-dark d-flex justify-content-center align-items-center rounded-circle fw-black shadow-sm" style="width: 50px; height: 50px; font-size: 1.1rem;">
-                                @(cliente.Nombre.Substring(0,1).ToUpper())@(cliente.Apellido.Substring(0,1).ToUpper())
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 fw-bold tracking-wide @(isActive ? "text-white" : "text-light")">@cliente.Nombre @cliente.Apellido</h6>
-                                <small class="text-white-50 d-flex align-items-center gap-1 font-monospace" style="font-size: 0.75rem;">
-                                    <i class="bi bi-upc-scan"></i> @cliente.CodigoQR
-                                </small>
-                            </div>
-                            @if(isActive) { <i class="bi bi-chevron-right text-primary fs-5"></i> }
-                        </div>
-                    </div>
+                    var activo = clienteSeleccionado?.Id == cliente.Id;
+                    <button class="client-card @(activo ? "active" : "")" @onclick="() => SeleccionarCliente(cliente)">
+                        <span class="client-avatar">@Iniciales(cliente)</span>
+                        <span class="flex-grow-1 text-start">
+                            <span class="client-name">@cliente.Nombre @cliente.Apellido</span>
+                            <span class="client-code"><i class="bi bi-upc-scan me-1"></i>@cliente.CodigoQR</span>
+                        </span>
+                        @if (activo)
+                        {
+                            <i class="bi bi-chevron-right text-primary"></i>
+                        }
+                    </button>
                 }
             }
         </div>
-    </div>
+    </aside>
 
-    @* ÁREA DE TRABAJO PRINCIPAL *@
-    <div class="workspace flex-grow-1 d-flex flex-column bg-dark position-relative">
+    <main class="coach-workspace">
         @if (clienteSeleccionado == null)
         {
-            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-white-50 fade-in position-relative z-1">
-                <div class="glass-icon-wrapper mb-4 rounded-circle d-flex align-items-center justify-content-center border border-secondary border-opacity-25 shadow-lg" style="width: 140px; height: 140px; background: rgba(15, 20, 30, 0.6); backdrop-filter: blur(10px);">
-                    <i class="bi bi-person-bounding-box display-2 text-primary opacity-75"></i>
+            <div class="empty-workspace">
+                <div class="empty-orbit">
+                    <i class="bi bi-person-bounding-box display-2 text-primary"></i>
                 </div>
-                <h2 class="fw-bold tracking-wide text-white mb-2">Selecciona un atleta</h2>
-                <p class="opacity-75 fs-5">Visualiza métricas, edita rutinas y comunícate en vivo.</p>
+                <h2 class="text-white fw-black mb-2">Selecciona un atleta</h2>
+                <p class="text-muted mb-0">Desde aquí armas rutinas, revisas progreso y mantienes el chat activo.</p>
             </div>
         }
         else
         {
-            <div class="workspace-header p-4 glass-panel border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center fade-in z-2">
+            <header class="workspace-header">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="avatar-header bg-dark border border-primary border-opacity-50 text-primary d-flex justify-content-center align-items-center rounded-circle fw-black shadow-sm" style="width: 60px; height: 60px; font-size: 1.5rem;">
-                        @(clienteSeleccionado.Nombre.Substring(0,1).ToUpper())@(clienteSeleccionado.Apellido.Substring(0,1).ToUpper())
-                    </div>
+                    <span class="header-avatar">@Iniciales(clienteSeleccionado)</span>
                     <div>
-                        <h2 class="fw-black mb-0 text-white tracking-wide">@clienteSeleccionado.Nombre @clienteSeleccionado.Apellido</h2>
-                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-3 mt-2 py-1 tracking-widest text-uppercase">
-                            <i class="bi bi-circle-fill small me-2" style="font-size: 0.4rem; vertical-align: middle;"></i> Coaching Activo
+                        <h2 class="text-white fw-black mb-1">@clienteSeleccionado.Nombre @clienteSeleccionado.Apellido</h2>
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2">
+                            <i class="bi bi-circle-fill me-2" style="font-size: 0.45rem;"></i>Coaching activo
                         </span>
                     </div>
                 </div>
-                
-                <div class="ios-tabs d-flex p-1 rounded-pill border border-secondary border-opacity-25" style="background: rgba(0,0,0,0.4);">
-                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold tracking-wide @(tabActual == "rutina" ? "bg-primary text-dark shadow" : "text-white-50 hover-text-white")" @onclick='() => tabActual = "rutina"'>📋 Rutina</button>
-                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold tracking-wide @(tabActual == "progreso" ? "bg-primary text-dark shadow" : "text-white-50 hover-text-white")" @onclick='() => tabActual = "progreso"'>📈 Métricas</button>
-                    <button class="btn rounded-pill px-4 py-2 transition-all fw-bold tracking-wide @(tabActual == "chat" ? "bg-primary text-dark shadow" : "text-white-50 hover-text-white")" @onclick='() => tabActual = "chat"'>💬 VIP Chat</button>
-                </div>
-            </div>
 
-            <div class="p-4 flex-grow-1 d-flex flex-column overflow-hidden position-relative z-1" style="background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px;">
-                
-                @* ========================================== *@
-                @* TAB: CREADOR DE RUTINAS *@
-                @* ========================================== *@
+                <div class="segmented-tabs">
+                    <button class="tab-btn @(tabActual == "rutina" ? "active" : "")" @onclick='() => tabActual = "rutina"'><i class="bi bi-clipboard2-pulse me-2"></i>Rutina</button>
+                    <button class="tab-btn @(tabActual == "progreso" ? "active" : "")" @onclick='() => tabActual = "progreso"'><i class="bi bi-graph-up-arrow me-2"></i>Progreso</button>
+                    <button class="tab-btn @(tabActual == "chat" ? "active" : "")" @onclick="AbrirChat"><i class="bi bi-chat-dots me-2"></i>Chat</button>
+                </div>
+            </header>
+
+            <section class="workspace-body custom-scrollbar">
                 @if (tabActual == "rutina")
                 {
-                    <div class="row h-100 g-4 fade-in">
-                        @* FORMULARIO *@
-                        <div class="col-12 col-xl-5 h-100 d-flex flex-column">
-                            <div class="card glass-panel border-secondary border-opacity-25 rounded-4 h-100 overflow-hidden d-flex flex-column shadow-lg">
-                                <div class="card-header border-bottom border-secondary border-opacity-25 p-4 bg-transparent">
-                                    <h5 class="fw-bold text-white mb-0 tracking-wide"><i class="bi bi-plus-circle text-primary me-2"></i>Asignar Ejercicio</h5>
+                    <div class="routine-grid">
+                        <div class="panel routine-meta">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+                                <div>
+                                    <h5 class="text-white fw-black mb-1">Plan activo</h5>
+                                    <span class="text-muted small">Define el objetivo y las indicaciones generales.</span>
                                 </div>
-                                <div class="card-body p-4 overflow-auto custom-scrollbar flex-grow-1">
-                                    
-                                    <div class="mb-4">
-                                        <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Día / Músculo</label>
-                                        <div class="mb-4">
-    <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Nombre del Día o Bloque</label>
-    <input type="text" @bind="diaSeleccionado" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: Día 1 - Pierna Pesada, Lunes - Pecho..." />
-</div>
-                                    </div>
+                                <button class="btn btn-outline-info rounded-pill fw-bold px-3" @onclick="NuevaRutina">
+                                    <i class="bi bi-plus-lg me-2"></i>Nueva
+                                </button>
+                            </div>
 
-                                    <div class="mb-4">
-                                        <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Ejercicio</label>
-                                        <input type="text" @bind="nuevoEjercicio.NombreEjercicio" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: Pushdowns en polea recta..." />
-                                    </div>
-
-                                    <div class="row g-4 mb-4">
-                                        <div class="col-6">
-                                            <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Series</label>
-                                            <input type="number" @bind="nuevoEjercicio.Series" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 4" />
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Reps Objetivo</label>
-                                            <input type="text" @bind="nuevoEjercicio.Repeticiones" class="form-control form-control-lg bg-dark border-secondary border-opacity-50 text-white shadow-none fs-6" placeholder="Ej: 8 - 12" />
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-5">
-                                        <label class="form-label text-muted small fw-bold tracking-widest text-uppercase">Instrucciones Técnicas</label>
-                                        <textarea @bind="nuevoEjercicio.NotasCoach" class="form-control bg-dark border-secondary border-opacity-50 text-white shadow-none" rows="4" placeholder="Ej: Hacer 1 Top Set pesado. Las otras 3 series efectivas bajarle al peso y buscar el fallo..."></textarea>
-                                    </div>
-
-                                    <button class="btn btn-gradient-primary w-100 fw-bold py-3 fs-5 rounded-3 shadow mt-auto tracking-wide" @onclick="AgregarEjercicioTemporal">
-                                        Agregar al Plan
-                                    </button>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Nombre del plan</label>
+                                    <input class="form-control control-dark" @bind="rutinaActual.Titulo" placeholder="Ej: Hipertrofia tren superior" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Objetivo</label>
+                                    <select class="form-select control-dark" @bind="rutinaActual.Objetivo">
+                                        <option value="Hipertrofia">Hipertrofia</option>
+                                        <option value="Fuerza">Fuerza</option>
+                                        <option value="Resistencia">Resistencia</option>
+                                        <option value="Recomposicion">Recomposicion</option>
+                                        <option value="Movilidad">Movilidad</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Inicio</label>
+                                    <input type="date" class="form-control control-dark" @bind="rutinaActual.FechaInicio" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Fin</label>
+                                    <input type="date" class="form-control control-dark" @bind="rutinaActual.FechaFin" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Indicaciones generales</label>
+                                    <textarea class="form-control control-dark" rows="2" @bind="rutinaActual.IndicacionesGenerales" placeholder="Calentamiento, movilidad, cardio, progresion de cargas..."></textarea>
                                 </div>
                             </div>
                         </div>
 
-                        @* VISTA PREVIA *@
-                        <div class="col-12 col-xl-7 h-100">
-                            <div class="card bg-dark border-secondary border-opacity-25 rounded-4 h-100 d-flex flex-column shadow-lg">
-                                <div class="card-header border-bottom border-secondary border-opacity-25 p-4 bg-transparent d-flex justify-content-between align-items-center">
-                                    <h5 class="fw-bold text-white mb-0 tracking-wide">Plan Actual: <span class="text-primary">@diaSeleccionado</span></h5>
-                                    <button class="btn btn-outline-primary rounded-pill fw-bold px-4" @onclick="GuardarRutinaEnBD" disabled="@guardandoRutina">
-                                        @(guardandoRutina ? "Guardando..." : "Guardar Cambios BD")
-                                    </button>
+                        <div class="panel catalog-panel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="text-white fw-black mb-1">Catalogo de ejercicios</h5>
+                                    <span class="text-muted small">Busca por musculo, equipo o nombre.</span>
                                 </div>
-                                <div class="card-body p-4 overflow-auto custom-scrollbar">
-                                    
-                                    @{
-                                        var diaActual = rutinaActual.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
-                                    }
+                                <button class="btn btn-gradient rounded-pill px-3 fw-bold" @onclick="AbrirModalEjercicio">
+                                    <i class="bi bi-plus-lg me-2"></i>Crear
+                                </button>
+                            </div>
 
-                                    @if (diaActual == null || !diaActual.Ejercicios.Any())
+                            <div class="row g-2 mb-3">
+                                <div class="col-12">
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-transparent border-secondary border-opacity-25 text-muted"><i class="bi bi-search"></i></span>
+                                        <input class="form-control control-dark" placeholder="Buscar ejercicio..." @bind="filtroCatalogo" @bind:event="oninput" @onkeyup="BuscarCatalogo" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <select class="form-select control-dark" @bind="grupoFiltro" @bind:after="CargarCatalogo">
+                                        <option value="">Todos los musculos</option>
+                                        @foreach (var grupo in gruposMusculares)
+                                        {
+                                            <option value="@grupo">@grupo</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <select class="form-select control-dark" @bind="equipoFiltro" @bind:after="CargarCatalogo">
+                                        <option value="">Todo equipo</option>
+                                        @foreach (var equipo in equipos)
+                                        {
+                                            <option value="@equipo">@equipo</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="catalog-list custom-scrollbar">
+                                @if (catalogoCargando)
+                                {
+                                    <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+                                }
+                                else if (!catalogo.Any())
+                                {
+                                    <div class="empty-state compact">
+                                        <i class="bi bi-search text-white-50 fs-2"></i>
+                                        <p class="text-muted small mb-0 mt-2">No hay ejercicios con esos filtros.</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var ejercicio in catalogo)
                                     {
-                                        <div class="text-center mt-5">
-                                            <div class="bg-dark rounded-circle p-3 d-inline-block mb-3 border border-secondary border-opacity-25">
-                                                <i class="bi bi-card-checklist fs-1 text-white-50"></i>
-                                            </div>
-                                            <p class="text-white-50">No hay ejercicios asignados para <strong>@diaSeleccionado</strong> aún.</p>
-                                        </div>
+                                        var activo = ejercicioSeleccionado?.Id == ejercicio.Id;
+                                        <button class="exercise-option @(activo ? "active" : "")" @onclick="() => SeleccionarEjercicio(ejercicio)">
+                                            <span class="exercise-icon"><i class="bi bi-person-arms-up"></i></span>
+                                            <span class="flex-grow-1 text-start">
+                                                <span class="text-white fw-bold d-block">@ejercicio.Nombre</span>
+                                                <span class="text-muted small">@ejercicio.GrupoMuscularPrincipal · @ejercicio.Equipo</span>
+                                            </span>
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        <div class="panel exercise-preview">
+                            @if (ejercicioSeleccionado == null)
+                            {
+                                <div class="empty-state h-100">
+                                    <i class="bi bi-play-circle display-5 text-primary"></i>
+                                    <h6 class="text-white fw-bold mt-3">Elige un ejercicio</h6>
+                                    <p class="text-muted small mb-0">Veras instrucciones, errores comunes y opciones para asignarlo.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="exercise-media mb-3">
+                                    @if (!string.IsNullOrWhiteSpace(ejercicioSeleccionado.GifUrl))
+                                    {
+                                        <img src="@ejercicioSeleccionado.GifUrl" alt="@ejercicioSeleccionado.Nombre" loading="lazy" referrerpolicy="no-referrer" />
                                     }
                                     else
                                     {
-                                        int contador = 1;
-                                        @foreach (var ej in diaActual.Ejercicios)
-                                        {
-                                            <div class="bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded-4 p-4 mb-3 d-flex justify-content-between align-items-center transition-hover">
-                                                <div>
-                                                    <h5 class="text-white fw-bold mb-2">@(contador++). @ej.NombreEjercicio</h5>
-                                                    <div class="d-flex gap-4 text-primary fw-bold font-monospace mb-2">
-                                                        <span><i class="bi bi-layers me-2"></i>@ej.Series Series</span>
-                                                        <span><i class="bi bi-arrow-repeat me-2"></i>@ej.Repeticiones Reps</span>
-                                                    </div>
-                                                    @if (!string.IsNullOrEmpty(ej.NotasCoach))
-                                                    {
-                                                        <p class="text-muted small mt-2 mb-0 border-start border-primary ps-3">@ej.NotasCoach</p>
-                                                    }
-                                                </div>
-                                                <div class="d-flex gap-2">
-                                                    <button class="btn btn-dark border border-danger border-opacity-25 text-danger hover-white p-2 rounded-3" @onclick="() => EliminarEjercicio(diaActual, ej)"><i class="bi bi-trash fs-5"></i></button>
-                                                </div>
-                                            </div>
-                                        }
+                                        <div class="media-placeholder">
+                                            <i class="bi bi-image text-white-50 fs-1"></i>
+                                            <span class="text-muted small">Sin GIF asignado</span>
+                                        </div>
                                     }
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                }
 
-                @* ========================================== *@
-                @* TAB: CHAT *@
-                @* ========================================== *@
-                else if (tabActual == "chat")
-                {
-                    <div class="chat-box d-flex flex-column h-100 glass-panel rounded-4 shadow-lg border border-secondary border-opacity-25 fade-in">
-                        <div class="messages-area flex-grow-1 p-4 overflow-auto custom-scrollbar" style="height: 0;">
-                            @if (!chatActual.Historial.Any())
-                            {
-                                <div class="text-center mt-5"><span class="badge bg-dark border border-secondary border-opacity-25 px-4 py-2 rounded-pill text-white-50 tracking-widest text-uppercase">Inicio del historial cifrado</span></div>
-                            }
-                            
-                            @foreach (var msg in chatActual.Historial)
-                            {
-                                bool esEntrenador = msg.RolRemitente == "Entrenador";
-                                <div class="d-flex w-100 mb-4 @(esEntrenador ? "justify-content-end" : "justify-content-start") slide-up">
-                                    <div class="msg-bubble p-3 shadow @(esEntrenador ? "entrenador-bubble" : "cliente-bubble")">
-                                        <div style="line-height: 1.5; font-size: 1.05rem;">@msg.Texto</div>
-                                        <div class="msg-meta text-end mt-2 d-flex justify-content-end align-items-center gap-1 font-monospace">
-                                            @msg.FechaEnvio.ToString("h:mm tt")
-                                            @if (esEntrenador) { <i class="bi bi-check2-all ms-1" style="color: rgba(0,0,0,0.5); font-size: 1.1rem;"></i> }
+                                <h4 class="text-white fw-black mb-2">@ejercicioSeleccionado.Nombre</h4>
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <span class="badge bg-primary text-dark rounded-pill px-3 py-2">@ejercicioSeleccionado.GrupoMuscularPrincipal</span>
+                                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3 py-2">@ejercicioSeleccionado.Equipo</span>
+                                    <span class="badge bg-secondary bg-opacity-10 text-white-50 border border-secondary border-opacity-25 rounded-pill px-3 py-2">@ejercicioSeleccionado.Nivel</span>
+                                </div>
+
+                                <div class="instruction-box mb-3">
+                                    <span class="box-label">Instrucciones</span>
+                                    <p>@ejercicioSeleccionado.Instrucciones</p>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(ejercicioSeleccionado.ErroresComunes))
+                                {
+                                    <div class="instruction-box danger mb-3">
+                                        <span class="box-label">Evitar</span>
+                                        <p>@ejercicioSeleccionado.ErroresComunes</p>
+                                    </div>
+                                }
+
+                                <div class="assignment-box">
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label">Series</label>
+                                            <input type="number" min="1" class="form-control control-dark" @bind="seriesInput" />
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">Reps</label>
+                                            <input class="form-control control-dark" @bind="repsInput" />
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">Descanso</label>
+                                            <input type="number" min="0" class="form-control control-dark" @bind="descansoInput" />
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">RIR/RPE</label>
+                                            <input class="form-control control-dark" @bind="rirInput" placeholder="2 RIR" />
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Notas para el atleta</label>
+                                            <textarea class="form-control control-dark" rows="2" @bind="notasCoachInput" placeholder="Top set, rango, tecnica, progresion..."></textarea>
                                         </div>
                                     </div>
+
+                                    <button class="btn btn-gradient w-100 rounded-pill fw-black mt-3 py-2" @onclick="AgregarEjercicioDesdeCatalogo">
+                                        <i class="bi bi-plus-circle-fill me-2"></i>Asignar al dia
+                                    </button>
                                 </div>
                             }
                         </div>
 
-                        <div class="input-area p-4 border-top border-secondary border-opacity-25" style="background: rgba(0,0,0,0.3);">
-                            <div class="input-group shadow-lg rounded-pill p-2 bg-dark border border-secondary border-opacity-50 focus-glow">
-                                <input type="text" class="form-control form-control-lg bg-transparent border-0 text-white shadow-none px-4 fs-6" 
-                                       placeholder="Escribe un mensaje para @clienteSeleccionado.Nombre..." 
-                                       @bind="nuevoMensajeTexto" @onkeyup="@(e => { if(e.Key == "Enter") EnviarMensaje(); })" />
-                                <button class="btn btn-gradient-primary rounded-pill px-5 fw-bold shadow transition-hover d-flex align-items-center" @onclick="EnviarMensaje">
-                                    <i class="bi bi-send-fill text-dark fs-5"></i>
+                        <div class="panel builder-panel">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <h5 class="text-white fw-black mb-1">Constructor semanal</h5>
+                                    <span class="text-muted small">Organiza dias y ejercicios.</span>
+                                </div>
+                                <button class="btn btn-outline-primary rounded-pill fw-bold px-4" @onclick="GuardarRutinaEnBD" disabled="@guardandoRutina">
+                                    @if (guardandoRutina)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-cloud-check me-2"></i>
+                                    }
+                                    Guardar
                                 </button>
                             </div>
+
+                            @if (!string.IsNullOrWhiteSpace(mensajeRutina))
+                            {
+                                <div class="alert alert-success bg-success bg-opacity-10 border-success text-success rounded-3 py-2 small">
+                                    <i class="bi bi-check-circle-fill me-2"></i>@mensajeRutina
+                                </div>
+                            }
+
+                            <div class="day-strip custom-scrollbar mb-3">
+                                @foreach (var dia in rutinaActual.Dias.OrderBy(d => d.OrdenDia))
+                                {
+                                    <button class="day-chip @(dia.NombreDia == diaSeleccionado ? "active" : "")" @onclick="() => SeleccionarDia(dia.NombreDia)">
+                                        @dia.NombreDia
+                                        <span>@dia.Ejercicios.Count</span>
+                                    </button>
+                                }
+                            </div>
+
+                            <div class="input-group mb-3">
+                                <input class="form-control control-dark" placeholder="Ej: Dia 3 - Pierna" @bind="nuevoDiaNombre" />
+                                <button class="btn btn-outline-info fw-bold" @onclick="AgregarDia"><i class="bi bi-plus-lg"></i></button>
+                            </div>
+
+                            @{
+                                var diaActual = rutinaActual.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
+                            }
+
+                            @if (diaActual == null)
+                            {
+                                <div class="empty-state compact">
+                                    <i class="bi bi-calendar-plus text-white-50 fs-1"></i>
+                                    <p class="text-muted small mb-0 mt-2">Crea un dia para empezar.</p>
+                                </div>
+                            }
+                            else if (!diaActual.Ejercicios.Any())
+                            {
+                                <div class="empty-state compact">
+                                    <i class="bi bi-clipboard-plus text-white-50 fs-1"></i>
+                                    <p class="text-muted small mb-0 mt-2">Este dia todavia no tiene ejercicios.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="assigned-list custom-scrollbar">
+                                    @foreach (var ejercicio in diaActual.Ejercicios.OrderBy(e => e.Orden))
+                                    {
+                                        <div class="assigned-card">
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <div>
+                                                    <h6 class="text-white fw-bold mb-1">@ejercicio.NombreEjercicio</h6>
+                                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                                        <span class="mini-badge">@ejercicio.Series series</span>
+                                                        <span class="mini-badge">@ejercicio.Repeticiones reps</span>
+                                                        <span class="mini-badge">@ejercicio.DescansoSegundos s</span>
+                                                        @if (!string.IsNullOrWhiteSpace(ejercicio.RIR))
+                                                        {
+                                                            <span class="mini-badge">@ejercicio.RIR</span>
+                                                        }
+                                                    </div>
+                                                    @if (!string.IsNullOrWhiteSpace(ejercicio.NotasCoach))
+                                                    {
+                                                        <p class="text-muted small mb-0">@ejercicio.NotasCoach</p>
+                                                    }
+                                                </div>
+                                                <button class="icon-btn danger" @onclick="() => EliminarEjercicio(diaActual, ejercicio)" title="Eliminar ejercicio">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </div>
                     </div>
                 }
+                else if (tabActual == "progreso")
+                {
+                    <div class="progress-grid">
+                        <div class="metric-card">
+                            <span>Entrenamientos</span>
+                            <strong>@historialEntrenamientos.Count</strong>
+                        </div>
+                        <div class="metric-card">
+                            <span>Ultima sesion</span>
+                            <strong>@UltimaSesionTexto</strong>
+                        </div>
+                        <div class="metric-card">
+                            <span>Series registradas</span>
+                            <strong>@historialEntrenamientos.Sum(r => r.EjerciciosHechos.Sum(e => e.Series.Count))</strong>
+                        </div>
+                    </div>
 
-                @* ========================================== *@
-                @* TAB: MÉTRICAS *@
-                @* ========================================== *@
-                else
-                {
-                    <div class="h-100 overflow-auto custom-scrollbar fade-in">
-        @if (historialEntrenamientos == null || !historialEntrenamientos.Any())
-        {
-            <div class="h-100 d-flex align-items-center justify-content-center text-white-50">
-                <div class="text-center">
-                    <i class="bi bi-graph-up-arrow display-1 text-cyan opacity-25 mb-4"></i>
-                    <h3 class="fw-bold tracking-wide text-white mb-2">Sin historial aún</h3>
-                    <p class="text-muted fs-5">Este cliente todavía no tiene entrenamientos registrados.</p>
-                </div>
-            </div>
-        }
-        else
-        {
-            <div class="row g-4">
-                @foreach (var registro in historialEntrenamientos.OrderByDescending(r => r.FechaEntrenamiento))
-                {
-                    <div class="col-12">
-                        <div class="card glass-panel border-secondary border-opacity-25 rounded-4 shadow-lg">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <div>
-                                        <h5 class="text-white fw-bold mb-1">@registro.NombreDiaEntrenado</h5>
-                                        <small class="text-white-50">@registro.FechaEntrenamiento.ToString("dd/MM/yyyy h:mm tt")</small>
+                    @if (!historialEntrenamientos.Any())
+                    {
+                        <div class="empty-state panel mt-4">
+                            <i class="bi bi-graph-up display-6 text-white-50"></i>
+                            <h5 class="text-white fw-bold mt-3">Sin historial aun</h5>
+                            <p class="text-muted mb-0">Cuando el atleta cierre entrenamientos, apareceran aqui.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="history-list mt-4">
+                            @foreach (var registro in historialEntrenamientos.OrderByDescending(r => r.FechaEntrenamiento))
+                            {
+                                <div class="panel history-card">
+                                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                        <div>
+                                            <h5 class="text-white fw-bold mb-1">@registro.NombreDiaEntrenado</h5>
+                                            <span class="text-muted small">@registro.FechaEntrenamiento.ToString("dd/MM/yyyy h:mm tt")</span>
+                                        </div>
+                                        <span class="badge bg-primary text-dark rounded-pill">@registro.EjerciciosHechos.Count ejercicios</span>
                                     </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(registro.ComentariosAtleta))
+                                    {
+                                        <div class="coach-note mb-3">
+                                            <span>Comentario del atleta</span>
+                                            <p>@registro.ComentariosAtleta</p>
+                                        </div>
+                                    }
+
+                                    @foreach (var ejercicio in registro.EjerciciosHechos)
+                                    {
+                                        <div class="history-exercise">
+                                            <strong>@ejercicio.NombreEjercicio</strong>
+                                            <div class="series-line">
+                                                @foreach (var serie in ejercicio.Series)
+                                                {
+                                                    <span>@serie.NumeroSerie: @serie.PesoLibras lbs x @serie.RepeticionesLogradas</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
-
-                                @if (!string.IsNullOrWhiteSpace(registro.ComentariosAtleta))
+                            }
+                        </div>
+                    }
+                }
+                else if (tabActual == "chat")
+                {
+                    <div class="chat-panel panel">
+                        <div class="messages custom-scrollbar">
+                            @if (!chatActual.Historial.Any())
+                            {
+                                <div class="empty-state compact">
+                                    <i class="bi bi-chat-dots text-white-50 fs-1"></i>
+                                    <p class="text-muted small mb-0 mt-2">Aun no hay mensajes.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var msg in chatActual.Historial)
                                 {
-                                    <div class="mb-3 p-3 rounded-3 bg-dark border border-secondary border-opacity-25">
-                                        <span class="text-muted small d-block mb-1">Comentario del atleta</span>
-                                        <span class="text-white">@registro.ComentariosAtleta</span>
-                                    </div>
-                                }
-
-                                @foreach (var ej in registro.EjerciciosHechos)
-                                {
-                                    <div class="mb-3 p-3 rounded-4 bg-secondary bg-opacity-10 border border-secondary border-opacity-25">
-                                        <h6 class="text-white fw-bold mb-2">@ej.NombreEjercicio</h6>
-
-                                        <div class="row g-2">
-                                            @foreach (var serie in ej.Series)
-                                            {
-                                                <div class="col-12 col-md-4 col-lg-3">
-                                                    <div class="p-2 rounded-3 bg-dark border border-secondary border-opacity-25 text-center">
-                                                        <div class="text-white-50 small">Serie @serie.NumeroSerie</div>
-                                                        <div class="text-primary fw-bold">@serie.PesoLibras lbs</div>
-                                                        <div class="text-white">@serie.RepeticionesLogradas reps</div>
-                                                    </div>
-                                                </div>
-                                            }
+                                    var esEntrenador = msg.RolRemitente == "Entrenador";
+                                    <div class="message-row @(esEntrenador ? "out" : "in")">
+                                        <div class="message-bubble">
+                                            <p>@msg.Texto</p>
+                                            <span>@msg.FechaEnvio.ToString("h:mm tt")</span>
                                         </div>
                                     </div>
                                 }
-                            </div>
+                            }
+                        </div>
+                        <div class="chat-input">
+                            <input class="form-control control-dark" placeholder="Escribe un mensaje..." @bind="nuevoMensajeTexto" @onkeyup="ManejarEnterChat" />
+                            <button class="btn btn-gradient rounded-pill px-4" @onclick="EnviarMensaje"><i class="bi bi-send-fill"></i></button>
                         </div>
                     </div>
                 }
-            </div>
+            </section>
         }
-    </div>
-                }
-            </div>
-        }
-    </div>
+    </main>
 </div>
 
+@if (mostrarModalEjercicio)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(4,5,8,.82); backdrop-filter: blur(8px);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content modal-surface">
+                <div class="modal-header border-secondary border-opacity-25">
+                    <h5 class="modal-title text-white fw-black"><i class="bi bi-database-add text-primary me-2"></i>Nuevo ejercicio de catalogo</h5>
+                    <button class="btn-close btn-close-white" @onclick="CerrarModalEjercicio"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre</label>
+                            <input class="form-control control-dark" @bind="nuevoEjercicioCatalogo.Nombre" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Musculo principal</label>
+                            <input class="form-control control-dark" @bind="nuevoEjercicioCatalogo.GrupoMuscularPrincipal" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Equipo</label>
+                            <input class="form-control control-dark" @bind="nuevoEjercicioCatalogo.Equipo" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nivel</label>
+                            <select class="form-select control-dark" @bind="nuevoEjercicioCatalogo.Nivel">
+                                <option>Principiante</option>
+                                <option>Intermedio</option>
+                                <option>Avanzado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">URL GIF o imagen</label>
+                            <input class="form-control control-dark" @bind="nuevoEjercicioCatalogo.GifUrl" placeholder="https://..." />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Instrucciones</label>
+                            <textarea class="form-control control-dark" rows="3" @bind="nuevoEjercicioCatalogo.Instrucciones"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Errores comunes</label>
+                            <textarea class="form-control control-dark" rows="2" @bind="nuevoEjercicioCatalogo.ErroresComunes"></textarea>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(errorCatalogo))
+                    {
+                        <div class="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger rounded-3 mt-3 mb-0">
+                            @errorCatalogo
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer border-secondary border-opacity-25">
+                    <button class="btn btn-link text-muted text-decoration-none" @onclick="CerrarModalEjercicio">Cancelar</button>
+                    <button class="btn btn-gradient rounded-pill fw-bold px-4" @onclick="GuardarEjercicioCatalogo">Guardar ejercicio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
-    /* EL SECRETO DE LA EXPANSIÓN (Márgenes Negativos) */
-    .gymio-admin-container { 
-        background-color: #040508; 
+    .coach-shell {
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr);
+        min-height: calc(100vh - 6rem);
+        gap: 1rem;
         font-family: 'Segoe UI', Roboto, sans-serif;
-        margin: -1.5rem; 
-        height: calc(100vh - 3.5rem); 
-        width: calc(100% + 3rem);
     }
 
-    /* BOTONES Y COLORES */
-    .btn-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508 !important; border: none; }
-    .btn-gradient-primary:hover { background: linear-gradient(135deg, #00e693, #00a5bf); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0, 255, 163, 0.4) !important; }
-    .text-primary { color: #00FFA3 !important; text-shadow: 0 0 15px rgba(0, 255, 163, 0.2); }
+    .coach-sidebar, .coach-workspace, .panel, .modal-surface {
+        background: #0f141e;
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: 1rem;
+        box-shadow: 0 14px 30px rgba(0,0,0,.18);
+    }
+
+    .coach-sidebar { display: flex; flex-direction: column; overflow: hidden; }
+    .sidebar-header { padding: 1.25rem; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+    .client-list { padding: 1rem; overflow: auto; }
+
+    .client-card, .exercise-option {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        border: 1px solid transparent;
+        background: transparent;
+        color: inherit;
+        border-radius: .8rem;
+        padding: .85rem;
+        transition: all .2s ease;
+    }
+    .client-card:hover, .exercise-option:hover { background: rgba(255,255,255,.035); }
+    .client-card.active, .exercise-option.active { background: rgba(0,255,163,.08); border-color: rgba(0,255,163,.35); }
+    .client-avatar, .header-avatar {
+        background: linear-gradient(135deg, #00FFA3, #00B8D4);
+        color: #041014;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        flex: 0 0 auto;
+    }
+    .client-avatar { width: 44px; height: 44px; }
+    .header-avatar { width: 58px; height: 58px; font-size: 1.15rem; }
+    .client-name, .client-code { display: block; }
+    .client-name { color: white; font-weight: 800; }
+    .client-code { color: #94a3b8; font-size: .78rem; }
+
+    .coach-workspace { overflow: hidden; display: flex; flex-direction: column; }
+    .workspace-header { padding: 1.25rem; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .workspace-body { padding: 1rem; overflow: auto; }
+    .empty-workspace, .empty-state { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; }
+    .empty-state.compact { min-height: 180px; padding: 1rem; }
+    .empty-orbit { width: 136px; height: 136px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.025); margin-bottom: 1.5rem; }
+
+    .segmented-tabs { background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: .25rem; display: flex; gap: .25rem; }
+    .tab-btn { border: 0; background: transparent; color: #94a3b8; border-radius: 999px; padding: .65rem 1rem; font-weight: 800; white-space: nowrap; }
+    .tab-btn.active { background: #00FFA3; color: #041014; }
+
+    .routine-grid {
+        display: grid;
+        grid-template-columns: minmax(280px, .9fr) minmax(320px, 1fr) minmax(320px, 1fr);
+        grid-template-areas:
+            "meta meta preview"
+            "catalog builder preview";
+        gap: 1rem;
+    }
+    .routine-meta { grid-area: meta; }
+    .catalog-panel { grid-area: catalog; }
+    .exercise-preview { grid-area: preview; }
+    .builder-panel { grid-area: builder; }
+    .panel { padding: 1.25rem; }
+
+    .fw-black { font-weight: 900 !important; }
+    .text-primary { color: #00FFA3 !important; }
     .bg-primary { background-color: #00FFA3 !important; }
-    .text-cyan { color: #00B8D4 !important; }
+    .form-label { color: #94a3b8; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+    .control-dark { background: transparent !important; border-color: rgba(255,255,255,.15) !important; color: white !important; box-shadow: none !important; }
+    .control-dark:focus { border-color: #00FFA3 !important; box-shadow: 0 0 0 .18rem rgba(0,255,163,.16) !important; }
+    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; border: 0; }
+    .btn-gradient:hover { color: #041014; filter: brightness(1.08); }
+    .btn-outline-primary { color: #00FFA3; border-color: rgba(0,255,163,.5); }
+    .btn-outline-primary:hover { background: #00FFA3; border-color: #00FFA3; color: #041014; }
+    .btn-outline-info { color: #00B8D4; border-color: rgba(0,184,212,.5); }
+    .btn-outline-info:hover { background: #00B8D4; border-color: #00B8D4; color: #041014; }
 
-    /* GLASSMORPHISM */
-    .glass-panel { background: rgba(10, 13, 20, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    .catalog-list, .assigned-list { max-height: 520px; overflow: auto; padding-right: .25rem; }
+    .exercise-icon { width: 38px; height: 38px; border-radius: .7rem; background: rgba(0,255,163,.1); color: #00FFA3; display: inline-flex; align-items: center; justify-content: center; }
+    .exercise-media { height: 210px; border-radius: .9rem; overflow: hidden; background: #111827; border: 1px solid rgba(255,255,255,.06); }
+    .exercise-media img { width: 100%; height: 100%; object-fit: contain; display: block; background: #0b111d; }
+    .media-placeholder { height: 100%; display: flex; flex-direction: column; gap: .5rem; align-items: center; justify-content: center; }
+    .instruction-box, .assignment-box, .coach-note {
+        background: rgba(255,255,255,.025);
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: .8rem;
+        padding: 1rem;
+    }
+    .instruction-box.danger { border-color: rgba(244,63,94,.25); }
+    .box-label, .coach-note span { color: #94a3b8; font-size: .72rem; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: .35rem; }
+    .instruction-box p, .coach-note p { margin: 0; color: #e2e8f0; font-size: .9rem; }
 
-    /* SIDEBAR Y CLIENTES */
-    .sidebar { width: 380px; z-index: 10; border-color: rgba(0, 255, 163, 0.1) !important; }
-    .transition-all { transition: all 0.3s ease; }
-    .transition-hover { transition: all 0.2s ease; }
-    .transition-hover:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
-    .hover-client { cursor: pointer; border: 1px solid transparent; }
-    .hover-client:hover { background: rgba(0, 255, 163, 0.05); }
-    .active-client { background: linear-gradient(90deg, rgba(0,255,163,0.1) 0%, transparent 100%); border-left: 4px solid #00FFA3; cursor: pointer; }
-    .hover-text-white:hover { color: white !important; }
-    .hover-white:hover { color: white !important; border-color: white !important; }
+    .day-strip { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .35rem; }
+    .day-chip { border: 1px solid rgba(255,255,255,.08); color: #cbd5e1; background: #111827; border-radius: 999px; padding: .55rem .8rem; white-space: nowrap; font-weight: 800; }
+    .day-chip.active { border-color: #00FFA3; color: #041014; background: #00FFA3; }
+    .day-chip span { margin-left: .5rem; opacity: .75; }
+    .assigned-card { background: #111827; border: 1px solid rgba(255,255,255,.06); border-radius: .9rem; padding: 1rem; margin-bottom: .75rem; }
+    .mini-badge { background: rgba(0,255,163,.08); color: #00FFA3; border: 1px solid rgba(0,255,163,.2); border-radius: 999px; padding: .25rem .55rem; font-size: .75rem; }
+    .icon-btn { width: 36px; height: 36px; border-radius: .65rem; border: 1px solid rgba(255,255,255,.1); background: transparent; color: #94a3b8; }
+    .icon-btn.danger { color: #f43f5e; border-color: rgba(244,63,94,.25); }
 
-    /* CHAT BUBBLES */
-    .msg-bubble { max-width: 80%; font-size: 1.05rem; }
-    .entrenador-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; font-weight: 500; border-radius: 1.5rem 1.5rem 0 1.5rem; box-shadow: 0 5px 20px rgba(0, 255, 163, 0.25); }
-    .cliente-bubble { background: #121824; color: #e0e4f5; border-radius: 1.5rem 1.5rem 1.5rem 0; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-    .msg-meta { font-size: 0.75rem; opacity: 0.8; }
+    .progress-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .metric-card { background: #0f141e; border: 1px solid rgba(255,255,255,.06); border-radius: 1rem; padding: 1.25rem; }
+    .metric-card span { color: #94a3b8; font-size: .78rem; text-transform: uppercase; font-weight: 800; display: block; }
+    .metric-card strong { color: white; font-size: 1.7rem; }
+    .history-list { display: grid; gap: 1rem; }
+    .history-exercise { border-top: 1px solid rgba(255,255,255,.06); padding-top: .75rem; margin-top: .75rem; }
+    .series-line { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+    .series-line span { color: #cbd5e1; background: #111827; border-radius: 999px; padding: .25rem .6rem; font-size: .78rem; }
 
-    /* INPUTS */
-    .form-control:focus, .form-select:focus { background-color: rgba(255,255,255,0.03) !important; color: white !important; border-color: #00FFA3 !important; box-shadow: 0 0 15px rgba(0, 255, 163, 0.15) !important; }
-    .focus-glow:focus-within { border-color: #00FFA3 !important; box-shadow: 0 0 20px rgba(0, 255, 163, 0.25) !important; }
+    .chat-panel { min-height: 620px; display: flex; flex-direction: column; }
+    .messages { flex: 1; overflow: auto; padding-right: .25rem; }
+    .message-row { display: flex; margin-bottom: .75rem; }
+    .message-row.out { justify-content: flex-end; }
+    .message-row.in { justify-content: flex-start; }
+    .message-bubble { max-width: 72%; border-radius: 1rem; padding: .85rem 1rem; background: #111827; border: 1px solid rgba(255,255,255,.06); }
+    .message-row.out .message-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; }
+    .message-bubble p { margin: 0 0 .35rem; }
+    .message-bubble span { font-size: .72rem; opacity: .7; display: block; text-align: right; }
+    .chat-input { display: flex; gap: .75rem; border-top: 1px solid rgba(255,255,255,.06); padding-top: 1rem; }
 
-    /* ANIMACIONES */
-    .fade-in { animation: fadeIn 0.5s cubic-bezier(0.165, 0.84, 0.44, 1); }
-    .slide-up { animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 999px; }
 
-    /* SCROLLBAR NEÓN */
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 255, 163, 0.2); border-radius: 10px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 163, 0.5); }
-    
-    /* TIPOGRAFÍA */
-    .tracking-widest { letter-spacing: 0.15em; }
-    .tracking-wide { letter-spacing: 0.05em; }
+    @@media (max-width: 1200px) {
+        .coach-shell { grid-template-columns: 1fr; }
+        .coach-sidebar { max-height: 340px; }
+        .routine-grid {
+            grid-template-columns: 1fr;
+            grid-template-areas: "meta" "catalog" "preview" "builder";
+        }
+        .workspace-header { flex-direction: column; align-items: stretch; }
+        .segmented-tabs { justify-content: center; }
+    }
 </style>
 
 @code {
     private List<Cliente> misClientes = new();
     private Cliente? clienteSeleccionado;
+    private bool cargandoClientes = true;
+    private string tabActual = "rutina";
+    private int idEntrenadorActual;
+
+    private Rutina rutinaActual = new();
+    private string diaSeleccionado = "";
+    private string nuevoDiaNombre = "";
+    private bool guardandoRutina;
+    private string mensajeRutina = "";
+
+    private List<EjercicioCatalogo> catalogo = new();
+    private List<string> gruposMusculares = new();
+    private List<string> equipos = new();
+    private string filtroCatalogo = "";
+    private string grupoFiltro = "";
+    private string equipoFiltro = "";
+    private bool catalogoCargando;
+    private EjercicioCatalogo? ejercicioSeleccionado;
+    private bool mostrarModalEjercicio;
+    private EjercicioCatalogo nuevoEjercicioCatalogo = new();
+    private string errorCatalogo = "";
+
+    private int seriesInput = 3;
+    private string repsInput = "8-12";
+    private int descansoInput = 90;
+    private string rirInput = "2 RIR";
+    private string notasCoachInput = "";
+
+    private List<RegistroEntrenamiento> historialEntrenamientos = new();
     private ChatEntrenador chatActual = new();
-    private string tabActual = "rutina"; 
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
-    private int idEntrenadorActual;
-    
-    private List<RegistroEntrenamiento> historialEntrenamientos = new();
 
-
-    private Rutina rutinaActual = new Rutina();
-    private EjercicioRutina nuevoEjercicio = new EjercicioRutina();
-    private string diaSeleccionado = "Día de Pierna"; 
-    private bool guardandoRutina = false;
+    private string UltimaSesionTexto => historialEntrenamientos.FirstOrDefault()?.FechaEntrenamiento.ToString("dd/MM") ?? "Sin datos";
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        
+
         if (user.Identity is not null && user.Identity.IsAuthenticated)
         {
             var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -404,15 +734,17 @@
             }
         }
 
+        await CargarCatalogoInicial();
         misClientes = await ClienteService.ObtenerClientesPorEntrenadorAsync(idEntrenadorActual);
+        cargandoClientes = false;
 
         hubConnection = new HubConnectionBuilder()
             .WithUrl(Nav.ToAbsoluteUri("/chathub"))
             .Build();
 
-        hubConnection.On<string>("ChatActualizado", async (chatId) =>
+        hubConnection.On<string>("ChatActualizado", async chatId =>
         {
-            if (clienteSeleccionado != null && chatActual != null && chatActual.Id == chatId)
+            if (clienteSeleccionado != null && chatActual.Id == chatId)
             {
                 chatActual = await ChatService.ObtenerOCrearChatAsync(clienteSeleccionado.Id, idEntrenadorActual);
                 await InvokeAsync(StateHasChanged);
@@ -422,97 +754,313 @@
         await hubConnection.StartAsync();
     }
 
+    private async Task CargarCatalogoInicial()
+    {
+        gruposMusculares = (await EjercicioCatalogoService.ObtenerGruposMuscularesAsync()).OrderBy(g => g).ToList();
+        equipos = (await EjercicioCatalogoService.ObtenerEquiposAsync()).OrderBy(e => e).ToList();
+        await CargarCatalogo();
+    }
+
+    private async Task CargarCatalogo()
+    {
+        catalogoCargando = true;
+        catalogo = await EjercicioCatalogoService.BuscarEjerciciosAsync(filtroCatalogo, grupoFiltro, equipoFiltro);
+        ejercicioSeleccionado ??= catalogo.FirstOrDefault();
+        catalogoCargando = false;
+    }
+
+    private async Task BuscarCatalogo()
+    {
+        await CargarCatalogo();
+    }
+
     private async Task SeleccionarCliente(Cliente cliente)
     {
-       clienteSeleccionado = cliente;
-    chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, idEntrenadorActual);
+        clienteSeleccionado = cliente;
+        chatActual = await ChatService.ObtenerOCrearChatAsync(cliente.Id, idEntrenadorActual);
+        historialEntrenamientos = await RegistroEntrenamientoService.ObtenerPorClienteAsync(cliente.Id, 12);
 
-    var rutinaDb = await RutinaService.ObtenerRutinaActivaAsync(cliente.Id);
-    if (rutinaDb != null)
-    {
-        rutinaActual = rutinaDb;
+        var rutinaDb = await RutinaService.ObtenerRutinaActivaAsync(cliente.Id);
+        rutinaActual = rutinaDb ?? CrearRutinaBase(cliente.Id);
+        await HidratarRutinaConCatalogoAsync(rutinaActual);
+        AsegurarDiaInicial();
+        tabActual = "rutina";
     }
-    else
+
+    private Rutina CrearRutinaBase(int clienteId)
     {
-        rutinaActual = new Rutina
+        return new Rutina
         {
-            ClienteId = cliente.Id,
+            ClienteId = clienteId,
             EntrenadorId = idEntrenadorActual,
-            Titulo = "Plan General de Entrenamiento",
+            Titulo = "Plan de entrenamiento",
+            Objetivo = "Hipertrofia",
+            IndicacionesGenerales = "Calienta 8-10 minutos, registra tus cargas y conserva tecnica limpia.",
+            FechaInicio = DateTime.Today,
+            FechaFin = DateTime.Today.AddDays(56),
             Activa = true,
-            FechaInicio = DateTime.Now
+            Dias = new List<DiaEntrenamiento>
+            {
+                new() { OrdenDia = 1, NombreDia = "Dia 1 - Full body", FocoMuscular = "General" }
+            }
         };
     }
 
-    historialEntrenamientos = await RegistroEntrenamientoService.ObtenerPorClienteAsync(cliente.Id);
-    tabActual = "progreso";
+    private void NuevaRutina()
+    {
+        if (clienteSeleccionado == null) return;
+        rutinaActual = CrearRutinaBase(clienteSeleccionado.Id);
+        AsegurarDiaInicial();
+        mensajeRutina = "";
     }
 
-    private void AgregarEjercicioTemporal()
+    private void AsegurarDiaInicial()
     {
-        if (string.IsNullOrWhiteSpace(nuevoEjercicio.NombreEjercicio)) return;
-
-  
-        var dia = rutinaActual.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
-        
-      
-        if (dia == null)
+        if (!rutinaActual.Dias.Any())
         {
-            dia = new DiaEntrenamiento { NombreDia = diaSeleccionado };
-            rutinaActual.Dias.Add(dia);
+            rutinaActual.Dias.Add(new DiaEntrenamiento { OrdenDia = 1, NombreDia = "Dia 1 - Full body", FocoMuscular = "General" });
         }
 
-      
-        dia.Ejercicios.Add(new EjercicioRutina
+        diaSeleccionado = rutinaActual.Dias.OrderBy(d => d.OrdenDia).First().NombreDia;
+    }
+
+    private async Task HidratarRutinaConCatalogoAsync(Rutina rutina)
+    {
+        foreach (var ejercicio in rutina.Dias.SelectMany(d => d.Ejercicios))
         {
-            NombreEjercicio = nuevoEjercicio.NombreEjercicio,
-            Series = nuevoEjercicio.Series,
-            Repeticiones = nuevoEjercicio.Repeticiones,
-            NotasCoach = nuevoEjercicio.NotasCoach
+            var necesitaVisual = string.IsNullOrWhiteSpace(ejercicio.GifUrl);
+            var necesitaTecnica = string.IsNullOrWhiteSpace(ejercicio.InstruccionesTecnicas);
+
+            if (!necesitaVisual && !necesitaTecnica)
+            {
+                continue;
+            }
+
+            EjercicioCatalogo? catalogo = null;
+
+            if (!string.IsNullOrWhiteSpace(ejercicio.EjercicioCatalogoId))
+            {
+                catalogo = await EjercicioCatalogoService.ObtenerPorIdAsync(ejercicio.EjercicioCatalogoId);
+            }
+
+            if (catalogo == null || string.IsNullOrWhiteSpace(catalogo.GifUrl))
+            {
+                catalogo = await EjercicioCatalogoService.ResolverVisualPorNombreAsync(ejercicio.NombreEjercicio);
+            }
+
+            if (catalogo == null)
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.GifUrl))
+            {
+                ejercicio.GifUrl = catalogo.GifUrl;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.InstruccionesTecnicas))
+            {
+                ejercicio.InstruccionesTecnicas = catalogo.Instrucciones;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.ErroresComunes))
+            {
+                ejercicio.ErroresComunes = catalogo.ErroresComunes;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.GrupoMuscularPrincipal))
+            {
+                ejercicio.GrupoMuscularPrincipal = catalogo.GrupoMuscularPrincipal;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.Equipo))
+            {
+                ejercicio.Equipo = catalogo.Equipo;
+            }
+        }
+    }
+
+    private void SeleccionarEjercicio(EjercicioCatalogo ejercicio)
+    {
+        ejercicioSeleccionado = ejercicio;
+        notasCoachInput = "";
+    }
+
+    private void SeleccionarDia(string nombreDia)
+    {
+        diaSeleccionado = nombreDia;
+    }
+
+    private void AgregarDia()
+    {
+        var nombre = nuevoDiaNombre.Trim();
+        if (string.IsNullOrWhiteSpace(nombre) || rutinaActual.Dias.Any(d => d.NombreDia.Equals(nombre, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        rutinaActual.Dias.Add(new DiaEntrenamiento
+        {
+            NombreDia = nombre,
+            FocoMuscular = nombre,
+            OrdenDia = rutinaActual.Dias.Count + 1
         });
 
-     
-        nuevoEjercicio = new EjercicioRutina();
+        diaSeleccionado = nombre;
+        nuevoDiaNombre = "";
+    }
+
+    private void AgregarEjercicioDesdeCatalogo()
+    {
+        if (ejercicioSeleccionado == null || string.IsNullOrWhiteSpace(diaSeleccionado))
+        {
+            return;
+        }
+
+        var dia = rutinaActual.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
+        if (dia == null)
+        {
+            return;
+        }
+
+        dia.Ejercicios.Add(new EjercicioRutina
+        {
+            EjercicioCatalogoId = ejercicioSeleccionado.Id,
+            NombreEjercicio = ejercicioSeleccionado.Nombre,
+            GrupoMuscularPrincipal = ejercicioSeleccionado.GrupoMuscularPrincipal,
+            Equipo = ejercicioSeleccionado.Equipo,
+            Nivel = ejercicioSeleccionado.Nivel,
+            InstruccionesTecnicas = ejercicioSeleccionado.Instrucciones,
+            ErroresComunes = ejercicioSeleccionado.ErroresComunes,
+            GifUrl = ejercicioSeleccionado.GifUrl,
+            UrlVideoReferencia = ejercicioSeleccionado.VideoUrl,
+            Series = Math.Max(1, seriesInput),
+            Repeticiones = repsInput,
+            DescansoSegundos = descansoInput,
+            RIR = rirInput,
+            NotasCoach = notasCoachInput,
+            Orden = dia.Ejercicios.Count + 1
+        });
+
+        notasCoachInput = "";
     }
 
     private async Task GuardarRutinaEnBD()
     {
+        if (clienteSeleccionado == null) return;
+
         guardandoRutina = true;
-        
-        if (string.IsNullOrEmpty(rutinaActual.Id))
+        mensajeRutina = "";
+
+        rutinaActual.ClienteId = clienteSeleccionado.Id;
+        rutinaActual.EntrenadorId = idEntrenadorActual;
+        rutinaActual.Activa = true;
+
+        if (rutinaActual.FechaInicio == default)
         {
-            
+            rutinaActual.FechaInicio = DateTime.Today;
+        }
+
+        if (rutinaActual.FechaFin == default)
+        {
+            rutinaActual.FechaFin = rutinaActual.FechaInicio.AddDays(56);
+        }
+
+        await HidratarRutinaConCatalogoAsync(rutinaActual);
+
+        if (string.IsNullOrWhiteSpace(rutinaActual.Id))
+        {
             await RutinaService.CrearRutinaAsync(rutinaActual);
         }
         else
         {
-            
             await RutinaService.ActualizarRutinaAsync(rutinaActual);
         }
-        
+
+        mensajeRutina = "Rutina guardada y activa para el atleta.";
         guardandoRutina = false;
     }
-    
-    private void EliminarEjercicio(DiaEntrenamiento dia, EjercicioRutina ej)
+
+    private void EliminarEjercicio(DiaEntrenamiento dia, EjercicioRutina ejercicio)
     {
-        dia.Ejercicios.Remove(ej);
+        dia.Ejercicios.Remove(ejercicio);
+        var orden = 1;
+        foreach (var item in dia.Ejercicios)
+        {
+            item.Orden = orden++;
+        }
+    }
+
+    private void AbrirModalEjercicio()
+    {
+        nuevoEjercicioCatalogo = new EjercicioCatalogo { Nivel = "Principiante", Activo = true };
+        errorCatalogo = "";
+        mostrarModalEjercicio = true;
+    }
+
+    private void CerrarModalEjercicio()
+    {
+        mostrarModalEjercicio = false;
+    }
+
+    private async Task GuardarEjercicioCatalogo()
+    {
+        errorCatalogo = "";
+
+        if (string.IsNullOrWhiteSpace(nuevoEjercicioCatalogo.Nombre) ||
+            string.IsNullOrWhiteSpace(nuevoEjercicioCatalogo.GrupoMuscularPrincipal) ||
+            string.IsNullOrWhiteSpace(nuevoEjercicioCatalogo.Equipo))
+        {
+            errorCatalogo = "Nombre, musculo principal y equipo son obligatorios.";
+            return;
+        }
+
+        ejercicioSeleccionado = await EjercicioCatalogoService.CrearEjercicioAsync(nuevoEjercicioCatalogo);
+        mostrarModalEjercicio = false;
+        await CargarCatalogoInicial();
+    }
+
+    private async Task AbrirChat()
+    {
+        tabActual = "chat";
+        if (!string.IsNullOrWhiteSpace(chatActual.Id))
+        {
+            await ChatService.MarcarMensajesComoLeidosAsync(chatActual.Id, "Entrenador");
+        }
+    }
+
+    private async Task ManejarEnterChat(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await EnviarMensaje();
+        }
     }
 
     private async Task EnviarMensaje()
     {
-        if (!string.IsNullOrWhiteSpace(nuevoMensajeTexto))
+        if (string.IsNullOrWhiteSpace(nuevoMensajeTexto) || string.IsNullOrWhiteSpace(chatActual.Id))
         {
-            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Entrenador", RemitenteId = idEntrenadorActual };
-            await ChatService.EnviarMensajeAsync(chatActual.Id!, msg);
-            
-            if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
-            {
-                await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
-            }
-
-            chatActual.Historial.Add(msg);
-            nuevoMensajeTexto = "";
+            return;
         }
+
+        var msg = new Mensaje { Texto = nuevoMensajeTexto.Trim(), RolRemitente = "Entrenador", RemitenteId = idEntrenadorActual };
+        await ChatService.EnviarMensajeAsync(chatActual.Id, msg);
+
+        if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
+        }
+
+        chatActual.Historial.Add(msg);
+        nuevoMensajeTexto = "";
+    }
+
+    private static string Iniciales(Cliente cliente)
+    {
+        var nombre = string.IsNullOrWhiteSpace(cliente.Nombre) ? "A" : cliente.Nombre[..1];
+        var apellido = string.IsNullOrWhiteSpace(cliente.Apellido) ? "" : cliente.Apellido[..1];
+        return $"{nombre}{apellido}".ToUpper();
     }
 
     public async ValueTask DisposeAsync()

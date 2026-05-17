@@ -50,5 +50,26 @@ namespace Gymio.Services
 
             await _chats.UpdateOneAsync(filtro, actualizacion);
         }
+
+        public async Task MarcarMensajesComoLeidosAsync(string chatId, string rolLector)
+        {
+            var chat = await _chats.Find(c => c.Id == chatId).FirstOrDefaultAsync();
+            if (chat == null)
+            {
+                return;
+            }
+
+            var cambio = false;
+            foreach (var mensaje in chat.Historial.Where(m => m.RolRemitente != rolLector && !m.Leido))
+            {
+                mensaje.Leido = true;
+                cambio = true;
+            }
+
+            if (cambio)
+            {
+                await _chats.ReplaceOneAsync(c => c.Id == chatId, chat);
+            }
+        }
     }
 }

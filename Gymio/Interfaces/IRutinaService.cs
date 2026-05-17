@@ -9,5 +9,6 @@ namespace Gymio.Interfaces
         Task CrearRutinaAsync(Rutina rutina);
         Task ActualizarRutinaAsync(Rutina rutina);
         Task EliminarRutinaAsync(string id);
+        Task ActivarRutinaAsync(string id, int clienteId);
     }
 }

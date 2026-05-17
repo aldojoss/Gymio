@@ -1,4 +1,4 @@
-﻿@page "/mi-portal"
+@page "/mi-portal"
 @attribute [Authorize(Roles = "Cliente")]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @implements IAsyncDisposable
@@ -11,250 +11,403 @@
 @inject IRutinaService RutinaService
 @inject IChatService ChatService
 @inject IRegistroEntrenamientoService RegistroEntrenamientoService
+@inject IClienteService ClienteService
+@inject IEjercicioCatalogoService EjercicioCatalogoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
 <PageTitle>Mi Entrenamiento - Gymio</PageTitle>
 
-<div class="gymio-mobile-app text-light d-flex flex-column vh-100 overflow-hidden">
-    <div class="app-header p-4 glass-panel border-bottom border-secondary border-opacity-25 z-2 shadow-sm">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="athlete-shell text-light">
+    <header class="athlete-header">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
             <div>
-                <p class="text-primary fw-bold tracking-widest text-uppercase small mb-0"><i class="bi bi-fire me-1"></i> Modo Atleta</p>
-                <h3 class="fw-black text-white tracking-wide mb-0">@nombreCliente</h3>
+                <span class="eyebrow"><i class="bi bi-fire me-1"></i>Modo atleta</span>
+                <h2 class="text-white fw-black mb-1">@nombreCliente</h2>
+                @if (miRutina != null)
+                {
+                    <p class="text-muted mb-0">@miRutina.Titulo · @miRutina.Objetivo</p>
+                }
             </div>
-            <div class="avatar bg-dark border border-secondary text-white-50 d-flex justify-content-center align-items-center rounded-circle fw-black shadow-lg" style="width: 50px; height: 50px; font-size: 1.2rem;">
-                @(string.IsNullOrEmpty(nombreCliente) ? "G" : nombreCliente.Substring(0,1).ToUpper())
-            </div>
+            <span class="athlete-avatar">@(string.IsNullOrWhiteSpace(nombreCliente) ? "G" : nombreCliente[..1].ToUpper())</span>
         </div>
 
-        <div class="ios-tabs d-flex p-1 rounded-pill" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05);">
-            <button class="btn rounded-pill flex-grow-1 py-2 transition-all fw-bold tracking-wide @(tabActual == "entrenamiento" ? "bg-primary text-dark shadow" : "text-white-50")" @onclick='() => tabActual = "entrenamiento"'>
-                <i class="bi bi-activity"></i> Hoy
+        <div class="segmented-tabs">
+            <button class="tab-btn @(tabActual == "entrenamiento" ? "active" : "")" @onclick='() => tabActual = "entrenamiento"'>
+                <i class="bi bi-activity me-2"></i>Hoy
             </button>
-            <button class="btn rounded-pill flex-grow-1 py-2 transition-all fw-bold tracking-wide @(tabActual == "chat" ? "bg-primary text-dark shadow" : "text-white-50")" @onclick="AbrirChat">
-                <i class="bi bi-chat-dots-fill"></i> Chat Coach
+            <button class="tab-btn @(tabActual == "historial" ? "active" : "")" @onclick='() => tabActual = "historial"'>
+                <i class="bi bi-clock-history me-2"></i>Historial
+            </button>
+            <button class="tab-btn @(tabActual == "chat" ? "active" : "")" @onclick="AbrirChat">
+                <i class="bi bi-chat-dots-fill me-2"></i>Chat
                 @if (mensajesSinLeer > 0)
                 {
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">@mensajesSinLeer</span>
+                    <span class="chat-badge">@mensajesSinLeer</span>
                 }
             </button>
         </div>
-    </div>
+    </header>
 
-    <div class="app-content flex-grow-1 overflow-auto custom-scrollbar p-3 position-relative z-1" style="background-color: #06080c;">
-        @if (tabActual == "entrenamiento")
+    <main class="athlete-content custom-scrollbar">
+        @if (cargando)
         {
-            if (cargando)
+            <div class="empty-state">
+                <div class="spinner-border text-primary"></div>
+            </div>
+        }
+        else if (tabActual == "entrenamiento")
+        {
+            @if (miRutina == null)
             {
-                <div class="h-100 d-flex justify-content-center align-items-center"><div class="spinner-border text-primary"></div></div>
-            }
-            else if (miRutina == null)
-            {
-                <div class="text-center mt-5 fade-in">
-                    <div class="bg-dark rounded-circle p-4 d-inline-block mb-3 border border-secondary border-opacity-25 shadow">
-                        <i class="bi bi-clipboard-x display-5 text-white-50"></i>
-                    </div>
-                    <h4 class="fw-bold text-white mb-2 tracking-wide">Sin plan activo</h4>
-                    <p class="text-muted">Tu entrenador aún no te ha asignado una rutina.</p>
+                <div class="empty-state panel">
+                    <i class="bi bi-clipboard-x display-5 text-white-50"></i>
+                    <h4 class="text-white fw-black mt-3">Sin plan activo</h4>
+                    <p class="text-muted mb-0">Tu entrenador aun no te ha asignado una rutina.</p>
                 </div>
             }
             else
             {
-                <div class="mb-4 fade-in">
-                    <label class="form-label text-muted small fw-bold tracking-widest text-uppercase ms-1">Bloque de Entrenamiento</label>
-                    <select value="@diaSeleccionado" @onchange="CambiarDia" class="form-select form-select-lg bg-dark border-secondary border-opacity-25 text-white shadow-none fs-6 rounded-4">
-                        @foreach (var dia in miRutina.Dias)
-                        {
-                            <option value="@dia.NombreDia">@dia.NombreDia</option>
-                        }
-                    </select>
+                <section class="routine-summary panel mb-3">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                        <div>
+                            <h4 class="text-white fw-black mb-1">@miRutina.Titulo</h4>
+                            <p class="text-muted mb-0">@miRutina.IndicacionesGenerales</p>
+                        </div>
+                        <div class="routine-date">
+                            <span>@miRutina.FechaInicio.ToString("dd/MM")</span>
+                            <i class="bi bi-arrow-right"></i>
+                            <span>@miRutina.FechaFin.ToString("dd/MM")</span>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="day-strip custom-scrollbar mb-3">
+                    @foreach (var dia in miRutina.Dias.OrderBy(d => d.OrdenDia))
+                    {
+                        <button class="day-chip @(dia.NombreDia == diaSeleccionado ? "active" : "")" @onclick="() => CambiarDia(dia.NombreDia)">
+                            @dia.NombreDia
+                            <span>@dia.Ejercicios.Count</span>
+                        </button>
+                    }
                 </div>
 
-                if (entrenamientoDeHoy != null && entrenamientoDeHoy.EjerciciosHechos.Any())
+                @if (entrenamientoDeHoy.EjerciciosHechos.Any())
                 {
-                    int index = 1;
                     var bloqueOriginal = miRutina.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
+                    var indice = 1;
 
-                    foreach (var ejReal in entrenamientoDeHoy.EjerciciosHechos)
+                    @foreach (var ejercicioRegistro in entrenamientoDeHoy.EjerciciosHechos)
                     {
-                        var ejOriginal = bloqueOriginal?.Ejercicios.FirstOrDefault(e => e.NombreEjercicio == ejReal.NombreEjercicio);
+                        var ejercicioPlan = bloqueOriginal?.Ejercicios.FirstOrDefault(e => e.NombreEjercicio == ejercicioRegistro.NombreEjercicio);
+                        var gifEjercicio = GifEjercicio(ejercicioPlan);
 
-                        <div class="card premium-card border-0 rounded-4 mb-4 shadow-lg slide-up">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h5 class="text-white fw-bold mb-0">@index. @ejReal.NombreEjercicio</h5>
+                        <article class="exercise-card panel">
+                            <div class="exercise-media">
+                                @if (!string.IsNullOrWhiteSpace(gifEjercicio))
+                                {
+                                    <img src="@gifEjercicio" alt="@ejercicioRegistro.NombreEjercicio" loading="lazy" referrerpolicy="no-referrer" />
+                                }
+                                else
+                                {
+                                    <div class="media-placeholder">
+                                        <i class="bi bi-play-circle text-primary fs-1"></i>
+                                        <span class="text-muted small">GIF pendiente</span>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="exercise-body">
+                                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                    <div>
+                                        <span class="exercise-count">Ejercicio @indice</span>
+                                        <h4 class="text-white fw-black mb-2">@ejercicioRegistro.NombreEjercicio</h4>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @if (ejercicioPlan != null)
+                                            {
+                                                <span class="meta-badge">@ejercicioPlan.Series series</span>
+                                                <span class="meta-badge">@ejercicioPlan.Repeticiones reps</span>
+                                                <span class="meta-badge">@ejercicioPlan.DescansoSegundos s descanso</span>
+                                                @if (!string.IsNullOrWhiteSpace(ejercicioPlan.RIR))
+                                                {
+                                                    <span class="meta-badge">@ejercicioPlan.RIR</span>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                    <span class="muscle-pill">@(ejercicioPlan?.GrupoMuscularPrincipal ?? "General")</span>
                                 </div>
 
-                                @if (ejOriginal != null)
+                                @if (!string.IsNullOrWhiteSpace(ejercicioPlan?.InstruccionesTecnicas))
                                 {
-                                    <div class="d-flex gap-3 mb-3">
-                                        <span class="badge bg-dark border border-secondary border-opacity-25 text-primary px-3 py-2 rounded-pill font-monospace"><i class="bi bi-layers me-1"></i> @ejOriginal.Series Series</span>
-                                        <span class="badge bg-dark border border-secondary border-opacity-25 text-cyan px-3 py-2 rounded-pill font-monospace"><i class="bi bi-arrow-repeat me-1"></i> @ejOriginal.Repeticiones Reps</span>
+                                    <div class="instruction-box mb-3">
+                                        <span>Instrucciones</span>
+                                        <p>@ejercicioPlan.InstruccionesTecnicas</p>
                                     </div>
-
-                                    if (!string.IsNullOrEmpty(ejOriginal.NotasCoach))
-                                    {
-                                        <div class="notes-box p-3 rounded-3 mb-4">
-                                            <p class="text-white-50 small mb-0"><i class="bi bi-info-circle text-primary me-2"></i>@ejOriginal.NotasCoach</p>
-                                        </div>
-                                    }
                                 }
 
-                                <div class="tracker-area pt-2">
-                                    <div class="d-flex text-muted small fw-bold tracking-widest text-uppercase mb-2 ms-2">
-                                        <div style="width: 40px;">Set</div>
-                                        <div class="flex-grow-1 text-center">Lbs</div>
-                                        <div class="flex-grow-1 text-center">Reps</div>
-                                        <div style="width: 45px;" class="text-center"><i class="bi bi-check2-square"></i></div>
+                                @if (!string.IsNullOrWhiteSpace(ejercicioPlan?.NotasCoach))
+                                {
+                                    <div class="instruction-box coach mb-3">
+                                        <span>Nota del coach</span>
+                                        <p>@ejercicioPlan.NotasCoach</p>
+                                    </div>
+                                }
+
+                                <div class="tracker-table">
+                                    <div class="tracker-head">
+                                        <span>Set</span>
+                                        <span>Lbs</span>
+                                        <span>Reps</span>
+                                        <span>RPE</span>
+                                        <span></span>
                                     </div>
 
-                                    @foreach (var serie in ejReal.Series)
+                                    @foreach (var serie in ejercicioRegistro.Series)
                                     {
-                                        string serieKey = $"{ejReal.NombreEjercicio}-{serie.NumeroSerie}";
-                                        bool completada = seriesCompletadas.ContainsKey(serieKey) && seriesCompletadas[serieKey];
+                                        var serieKey = SerieKey(ejercicioRegistro, serie);
+                                        var completada = seriesCompletadas.GetValueOrDefault(serieKey);
 
-                                        <div class="d-flex align-items-center gap-2 mb-2 p-1 rounded-3 @(completada ? "bg-success bg-opacity-10 border border-success border-opacity-25" : "")">
-                                            <div class="text-muted fw-bold font-monospace text-center" style="width: 40px; font-size: 1.1rem;">
-                                                @serie.NumeroSerie
-                                            </div>
-
-                                            <div class="flex-grow-1">
-                                                <input type="number" @bind="serie.PesoLibras" disabled="@completada" class="form-control bg-dark border-secondary border-opacity-25 text-white text-center shadow-none font-monospace tracker-input" placeholder="0" />
-                                            </div>
-
-                                            <div class="flex-grow-1">
-                                                <input type="number" @bind="serie.RepeticionesLogradas" disabled="@completada" class="form-control bg-dark border-secondary border-opacity-25 text-white text-center shadow-none font-monospace tracker-input" placeholder="0" />
-                                            </div>
-
-                                            <div style="width: 45px;" class="text-end">
-                                                <button type="button" class="btn btn-sm check-btn @(completada ? "btn-success" : "btn-dark border border-secondary border-opacity-50 text-white-50") rounded-3 w-100 h-100 d-flex justify-content-center align-items-center" @onclick="() => ToggleSerie(serieKey)">
-                                                    <i class="bi bi-check-lg fs-5"></i>
-                                                </button>
-                                            </div>
+                                        <div class="tracker-row @(completada ? "done" : "")">
+                                            <strong>@serie.NumeroSerie</strong>
+                                            <input type="number" class="form-control tracker-input" @bind="serie.PesoLibras" disabled="@completada" placeholder="0" />
+                                            <input type="number" class="form-control tracker-input" @bind="serie.RepeticionesLogradas" disabled="@completada" placeholder="0" />
+                                            <input type="number" class="form-control tracker-input" @bind="serie.Rpe" disabled="@completada" placeholder="8" step="0.5" />
+                                            <button class="check-btn @(completada ? "done" : "")" @onclick="() => ToggleSerie(serieKey)">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
                                         </div>
                                     }
                                 </div>
                             </div>
-                        </div>
-                        index++;
+                        </article>
+
+                        indice++;
                     }
 
-                    <div class="mb-5 pb-4 slide-up" style="animation-delay: 0.2s;">
-                        <label class="form-label text-muted small fw-bold tracking-widest text-uppercase ms-1">Comentarios del día (Opcional)</label>
-                        <textarea @bind="entrenamientoDeHoy.ComentariosAtleta" class="form-control bg-dark border-secondary border-opacity-25 text-white shadow-none rounded-4 mb-4" rows="2" placeholder="¿Cómo te sentiste hoy?"></textarea>
+                    <section class="finish-panel panel">
+                        <label class="form-label">Comentarios del dia</label>
+                        <textarea class="form-control control-dark mb-3" rows="2" @bind="entrenamientoDeHoy.ComentariosAtleta" placeholder="Como te sentiste, molestias, energia, observaciones..."></textarea>
 
-                        @if (mostrarConfirmacion)
+                        @if (!string.IsNullOrWhiteSpace(mensajeConfirmacion))
                         {
-                            <div class="alert alert-success rounded-4 mb-3 text-center fw-bold">
+                            <div class="alert @(guardadoCorrecto ? "alert-success" : "alert-warning") rounded-3 py-2 text-center fw-bold">
                                 @mensajeConfirmacion
                             </div>
                         }
 
-                        <button type="button" class="btn btn-gradient-primary w-100 rounded-pill py-3 fw-black fs-5 shadow-lg tracking-wide" @onclick="FinalizarEntrenamiento">
-                            <i class="bi bi-trophy-fill me-2 text-dark"></i> FINALIZAR ENTRENAMIENTO
+                        <button class="btn btn-gradient w-100 rounded-pill py-3 fw-black" @onclick="FinalizarEntrenamiento">
+                            <i class="bi bi-trophy-fill me-2"></i>Finalizar entrenamiento
                         </button>
+                    </section>
+                }
+                else
+                {
+                    <div class="empty-state panel">
+                        <i class="bi bi-calendar-x display-5 text-white-50"></i>
+                        <h4 class="text-white fw-black mt-3">Dia sin ejercicios</h4>
+                        <p class="text-muted mb-0">Tu entrenador aun no agrego ejercicios a este bloque.</p>
                     </div>
                 }
             }
         }
+        else if (tabActual == "historial")
+        {
+            @if (!historialEntrenamientos.Any())
+            {
+                <div class="empty-state panel">
+                    <i class="bi bi-clock-history display-5 text-white-50"></i>
+                    <h4 class="text-white fw-black mt-3">Sin historial</h4>
+                    <p class="text-muted mb-0">Tus entrenamientos guardados apareceran aqui.</p>
+                </div>
+            }
+            else
+            {
+                <div class="history-list">
+                    @foreach (var registro in historialEntrenamientos)
+                    {
+                        <article class="panel history-card">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <h5 class="text-white fw-bold mb-1">@registro.NombreDiaEntrenado</h5>
+                                    <span class="text-muted small">@registro.FechaEntrenamiento.ToString("dd/MM/yyyy h:mm tt")</span>
+                                </div>
+                                <span class="badge bg-primary text-dark rounded-pill">@registro.EjerciciosHechos.Sum(e => e.Series.Count) series</span>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(registro.ComentariosAtleta))
+                            {
+                                <p class="history-comment">@registro.ComentariosAtleta</p>
+                            }
+
+                            @foreach (var ejercicio in registro.EjerciciosHechos)
+                            {
+                                <div class="history-exercise">
+                                    <strong>@ejercicio.NombreEjercicio</strong>
+                                    <div>
+                                        @foreach (var serie in ejercicio.Series)
+                                        {
+                                            <span>@serie.NumeroSerie: @serie.PesoLibras lbs x @serie.RepeticionesLogradas</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        }
         else if (tabActual == "chat")
         {
-            <div class="d-flex flex-column h-100 fade-in pb-4">
-                <div class="messages-area flex-grow-1 overflow-auto custom-scrollbar pe-2" style="height: 0;">
+            <section class="chat-panel panel">
+                <div class="messages custom-scrollbar">
                     @if (!chatActual.Historial.Any())
                     {
-                        <div class="text-center mt-4"><span class="badge bg-dark border border-secondary border-opacity-25 px-3 py-2 rounded-pill text-white-50 small">Comunícate con tu entrenador</span></div>
-                    }
-
-                    @foreach (var msg in chatActual.Historial)
-                    {
-                        bool esCliente = msg.RolRemitente == "Cliente";
-                        <div class="d-flex w-100 mb-3 @(esCliente ? "justify-content-end" : "justify-content-start") slide-up">
-                            <div class="msg-bubble p-3 shadow @(esCliente ? "cliente-propio-bubble" : "entrenador-bubble")">
-                                <div style="line-height: 1.4; font-size: 1rem;">@msg.Texto</div>
-                                <div class="msg-meta text-end mt-1 d-flex justify-content-end align-items-center gap-1 font-monospace" style="font-size: 0.7rem;">
-                                    @msg.FechaEnvio.ToString("h:mm tt")
-                                    @if (esCliente)
-                                    {
-                                        <i class="bi bi-check2-all ms-1 @(msg.Leido ? "text-primary" : "text-white-50")" style="font-size: 1rem;"></i>
-                                    }
-                                </div>
-                            </div>
+                        <div class="empty-state compact">
+                            <i class="bi bi-chat-heart text-white-50 fs-1"></i>
+                            <p class="text-muted small mb-0 mt-2">Comunicate con tu entrenador.</p>
                         </div>
                     }
+                    else
+                    {
+                        @foreach (var msg in chatActual.Historial)
+                        {
+                            var esCliente = msg.RolRemitente == "Cliente";
+                            <div class="message-row @(esCliente ? "out" : "in")">
+                                <div class="message-bubble">
+                                    <p>@msg.Texto</p>
+                                    <span>@msg.FechaEnvio.ToString("h:mm tt")</span>
+                                </div>
+                            </div>
+                        }
+                    }
                 </div>
 
-                <div class="input-area mt-3">
-                    <div class="input-group shadow-lg rounded-pill p-1 bg-dark border border-secondary border-opacity-50 focus-glow">
-                        <input type="text" class="form-control bg-transparent border-0 text-white shadow-none px-4"
-                               placeholder="Mensaje..."
-                               @bind="nuevoMensajeTexto" @onkeyup="@(e => { if(e.Key == "Enter") EnviarMensaje(); })" />
-                        <button class="btn btn-gradient-primary rounded-pill px-4 fw-bold shadow transition-hover" @onclick="EnviarMensaje">
-                            <i class="bi bi-send-fill text-dark"></i>
-                        </button>
-                    </div>
+                <div class="chat-input">
+                    <input class="form-control control-dark" placeholder="Mensaje..." @bind="nuevoMensajeTexto" @onkeyup="ManejarEnterChat" />
+                    <button class="btn btn-gradient rounded-pill px-4" @onclick="EnviarMensaje">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
                 </div>
-            </div>
+            </section>
         }
-    </div>
+    </main>
 </div>
 
 <style>
-    .gymio-mobile-app {
-        background-color: #06080c;
+    .athlete-shell {
+        min-height: calc(100vh - 6rem);
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 1rem;
         font-family: 'Segoe UI', Roboto, sans-serif;
-        margin: -1.5rem;
-        height: calc(100vh - 3.5rem);
-        width: calc(100% + 3rem);
     }
 
-    .btn-gradient-primary { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508 !important; border: none; }
-    .btn-gradient-primary:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 255, 163, 0.4) !important; }
+    .athlete-header, .panel {
+        background: #0f141e;
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: 1rem;
+        box-shadow: 0 14px 30px rgba(0,0,0,.18);
+    }
+
+    .athlete-header { padding: 1.25rem; }
+    .athlete-content { overflow: auto; padding-bottom: 1rem; }
+    .fw-black { font-weight: 900 !important; }
     .text-primary { color: #00FFA3 !important; }
     .bg-primary { background-color: #00FFA3 !important; }
-    .text-cyan { color: #00B8D4 !important; }
+    .eyebrow { color: #00FFA3; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
+    .athlete-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; }
 
-    .premium-card { background: #0f131a; border: 1px solid rgba(255,255,255,0.03) !important; }
-    .notes-box { background-color: rgba(255, 255, 255, 0.02); border-left: 3px solid #00FFA3; }
+    .segmented-tabs { background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: .25rem; display: flex; gap: .25rem; }
+    .tab-btn { position: relative; flex: 1; border: 0; background: transparent; color: #94a3b8; border-radius: 999px; padding: .75rem .9rem; font-weight: 900; }
+    .tab-btn.active { background: #00FFA3; color: #041014; }
+    .chat-badge { position: absolute; top: -6px; right: 8px; background: #f43f5e; color: white; border-radius: 999px; min-width: 20px; height: 20px; font-size: .7rem; display: inline-flex; align-items: center; justify-content: center; }
 
-    .tracker-input { font-size: 1.1rem !important; padding: 0.4rem; transition: all 0.2s ease; }
-    .tracker-input:focus { background-color: rgba(0, 255, 163, 0.05) !important; border-color: #00FFA3 !important; }
-    .tracker-input:disabled { opacity: 0.6; background-color: transparent !important; }
-    .check-btn { transition: all 0.2s ease; }
-    .check-btn.btn-success { background-color: #00FFA3; border-color: #00FFA3; color: #000; }
+    .panel { padding: 1.25rem; }
+    .empty-state { min-height: 340px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 2rem; }
+    .empty-state.compact { min-height: 240px; }
+    .routine-date { display: flex; align-items: center; gap: .65rem; color: #cbd5e1; background: #111827; border: 1px solid rgba(255,255,255,.06); border-radius: 999px; padding: .65rem 1rem; font-weight: 800; white-space: nowrap; }
+    .day-strip { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .35rem; }
+    .day-chip { border: 1px solid rgba(255,255,255,.08); color: #cbd5e1; background: #111827; border-radius: 999px; padding: .65rem .85rem; white-space: nowrap; font-weight: 900; }
+    .day-chip.active { background: #00FFA3; color: #041014; border-color: #00FFA3; }
+    .day-chip span { margin-left: .5rem; opacity: .72; }
 
-    .msg-bubble { max-width: 85%; font-size: 1rem; border-radius: 1.2rem; }
-    .entrenador-bubble { background: #121824; color: #e0e4f5; border-bottom-left-radius: 0.2rem; border: 1px solid rgba(255,255,255,0.05); }
-    .cliente-propio-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #040508; font-weight: 500; border-bottom-right-radius: 0.2rem; }
+    .exercise-card { display: grid; grid-template-columns: 260px minmax(0,1fr); gap: 1.25rem; margin-bottom: 1rem; }
+    .exercise-media { min-height: 230px; border-radius: .9rem; background: #111827; border: 1px solid rgba(255,255,255,.06); overflow: hidden; }
+    .exercise-media img { width: 100%; height: 100%; object-fit: contain; display: block; background: #0b111d; }
+    .media-placeholder { height: 100%; min-height: 230px; display: flex; flex-direction: column; gap: .5rem; align-items: center; justify-content: center; }
+    .exercise-count { color: #94a3b8; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
+    .meta-badge, .muscle-pill { border-radius: 999px; padding: .35rem .7rem; font-size: .78rem; font-weight: 800; }
+    .meta-badge { background: rgba(0,255,163,.08); color: #00FFA3; border: 1px solid rgba(0,255,163,.2); }
+    .muscle-pill { background: #00FFA3; color: #041014; white-space: nowrap; }
+    .instruction-box { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06); border-radius: .85rem; padding: 1rem; }
+    .instruction-box.coach { border-color: rgba(0,255,163,.22); }
+    .instruction-box span { color: #94a3b8; font-size: .72rem; text-transform: uppercase; font-weight: 900; display: block; margin-bottom: .35rem; }
+    .instruction-box p { color: #e2e8f0; margin: 0; }
 
-    .fade-in { animation: fadeIn 0.4s ease-in-out; }
-    .slide-up { animation: slideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); animation-fill-mode: both; }
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .tracker-table { display: grid; gap: .5rem; }
+    .tracker-head, .tracker-row { display: grid; grid-template-columns: 52px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 48px; gap: .5rem; align-items: center; }
+    .tracker-head { color: #94a3b8; font-size: .72rem; font-weight: 900; text-transform: uppercase; padding: 0 .2rem; }
+    .tracker-row { background: #111827; border: 1px solid rgba(255,255,255,.06); border-radius: .75rem; padding: .45rem; }
+    .tracker-row.done { border-color: rgba(0,255,163,.35); background: rgba(0,255,163,.07); }
+    .tracker-row strong { text-align: center; color: #cbd5e1; }
+    .tracker-input { background: transparent !important; border-color: rgba(255,255,255,.12) !important; color: white !important; text-align: center; box-shadow: none !important; }
+    .tracker-input:focus { border-color: #00FFA3 !important; box-shadow: 0 0 0 .16rem rgba(0,255,163,.14) !important; }
+    .check-btn { width: 40px; height: 40px; border-radius: .65rem; border: 1px solid rgba(255,255,255,.12); background: transparent; color: #94a3b8; }
+    .check-btn.done { background: #00FFA3; color: #041014; border-color: #00FFA3; }
 
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+    .form-label { color: #94a3b8; font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0; }
+    .control-dark { background: transparent !important; border-color: rgba(255,255,255,.15) !important; color: white !important; box-shadow: none !important; }
+    .control-dark:focus { border-color: #00FFA3 !important; box-shadow: 0 0 0 .18rem rgba(0,255,163,.16) !important; }
+    .btn-gradient { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; border: 0; }
+    .btn-gradient:hover { color: #041014; filter: brightness(1.08); }
 
-    .tracking-widest { letter-spacing: 0.15em; }
-    .tracking-wide { letter-spacing: 0.05em; }
+    .history-list { display: grid; gap: 1rem; }
+    .history-comment { background: rgba(255,255,255,.025); border-left: 3px solid #00FFA3; border-radius: .6rem; padding: .85rem; color: #e2e8f0; }
+    .history-exercise { border-top: 1px solid rgba(255,255,255,.06); padding-top: .75rem; margin-top: .75rem; }
+    .history-exercise strong { color: white; }
+    .history-exercise div { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+    .history-exercise span { background: #111827; color: #cbd5e1; border-radius: 999px; padding: .28rem .65rem; font-size: .78rem; }
+
+    .chat-panel { min-height: 620px; display: flex; flex-direction: column; }
+    .messages { flex: 1; overflow: auto; padding-right: .25rem; }
+    .message-row { display: flex; margin-bottom: .75rem; }
+    .message-row.out { justify-content: flex-end; }
+    .message-row.in { justify-content: flex-start; }
+    .message-bubble { max-width: 78%; border-radius: 1rem; padding: .85rem 1rem; background: #111827; border: 1px solid rgba(255,255,255,.06); }
+    .message-row.out .message-bubble { background: linear-gradient(135deg, #00FFA3, #00B8D4); color: #041014; }
+    .message-bubble p { margin: 0 0 .35rem; }
+    .message-bubble span { font-size: .72rem; opacity: .7; display: block; text-align: right; }
+    .chat-input { display: flex; gap: .75rem; border-top: 1px solid rgba(255,255,255,.06); padding-top: 1rem; }
+
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 999px; }
+
+    @@media (max-width: 900px) {
+        .exercise-card { grid-template-columns: 1fr; }
+        .segmented-tabs { overflow-x: auto; }
+        .tab-btn { min-width: 120px; }
+        .routine-date { align-self: flex-start; }
+    }
 </style>
 
 @code {
     private int idClienteActual;
+    private int idEntrenadorAsignado;
     private string nombreCliente = "";
     private bool cargando = true;
     private string tabActual = "entrenamiento";
     private Rutina? miRutina;
     private string diaSeleccionado = "";
     private RegistroEntrenamiento entrenamientoDeHoy = new();
+    private List<RegistroEntrenamiento> historialEntrenamientos = new();
     private Dictionary<string, bool> seriesCompletadas = new();
     private ChatEntrenador chatActual = new();
     private string nuevoMensajeTexto = "";
     private HubConnection? hubConnection;
-    private int mensajesSinLeer = 0;
+    private int mensajesSinLeer;
     private string mensajeConfirmacion = "";
-    private bool mostrarConfirmacion = false;
+    private bool guardadoCorrecto;
 
     protected override async Task OnInitializedAsync()
     {
@@ -273,27 +426,49 @@
         }
 
         miRutina = await RutinaService.ObtenerRutinaActivaAsync(idClienteActual);
+        if (miRutina != null)
+        {
+            await HidratarRutinaConCatalogoAsync(miRutina);
+        }
+
+        historialEntrenamientos = await RegistroEntrenamientoService.ObtenerPorClienteAsync(idClienteActual, 20);
+
         if (miRutina != null && miRutina.Dias.Any())
         {
-            diaSeleccionado = miRutina.Dias.First().NombreDia;
+            diaSeleccionado = miRutina.Dias.OrderBy(d => d.OrdenDia).First().NombreDia;
+            idEntrenadorAsignado = miRutina.EntrenadorId;
             PrepararRegistroDeHoy();
         }
 
-        int idEntrenadorAsignado = miRutina?.EntrenadorId ?? 8;
-        chatActual = await ChatService.ObtenerOCrearChatAsync(idClienteActual, idEntrenadorAsignado);
-        mensajesSinLeer = chatActual.Historial.Count(m => m.RolRemitente == "Entrenador" && !m.Leido);
+        if (idEntrenadorAsignado == 0)
+        {
+            idEntrenadorAsignado = await ClienteService.ObtenerIdEntrenadorAsignadoAsync(idClienteActual);
+        }
+
+        if (idEntrenadorAsignado > 0)
+        {
+            chatActual = await ChatService.ObtenerOCrearChatAsync(idClienteActual, idEntrenadorAsignado);
+            mensajesSinLeer = chatActual.Historial.Count(m => m.RolRemitente == "Entrenador" && !m.Leido);
+        }
 
         hubConnection = new HubConnectionBuilder()
             .WithUrl(Nav.ToAbsoluteUri("/chathub"))
             .Build();
 
-        hubConnection.On<string>("ChatActualizado", async (chatId) =>
+        hubConnection.On<string>("ChatActualizado", async chatId =>
         {
-            if (chatActual != null && chatActual.Id == chatId)
+            if (!string.IsNullOrWhiteSpace(chatActual.Id) && chatActual.Id == chatId && idEntrenadorAsignado > 0)
             {
                 chatActual = await ChatService.ObtenerOCrearChatAsync(idClienteActual, idEntrenadorAsignado);
-                if (tabActual == "chat") await MarcarMensajesComoLeidos();
-                else mensajesSinLeer = chatActual.Historial.Count(m => m.RolRemitente == "Entrenador" && !m.Leido);
+                if (tabActual == "chat")
+                {
+                    await MarcarMensajesComoLeidos();
+                }
+                else
+                {
+                    mensajesSinLeer = chatActual.Historial.Count(m => m.RolRemitente == "Entrenador" && !m.Leido);
+                }
+
                 await InvokeAsync(StateHasChanged);
             }
         });
@@ -302,11 +477,11 @@
         cargando = false;
     }
 
-    private void CambiarDia(ChangeEventArgs e)
+    private void CambiarDia(string nombreDia)
     {
-        diaSeleccionado = e.Value?.ToString() ?? "";
-        mostrarConfirmacion = false;
+        diaSeleccionado = nombreDia;
         mensajeConfirmacion = "";
+        guardadoCorrecto = false;
         PrepararRegistroDeHoy();
     }
 
@@ -324,51 +499,149 @@
         };
 
         var bloqueOriginal = miRutina?.Dias.FirstOrDefault(d => d.NombreDia == diaSeleccionado);
-        if (bloqueOriginal != null)
+        if (bloqueOriginal == null)
         {
-            foreach (var ej in bloqueOriginal.Ejercicios)
+            return;
+        }
+
+        foreach (var ejercicio in bloqueOriginal.Ejercicios.OrderBy(e => e.Orden))
+        {
+            var registroEjercicio = new RegistroEjercicio
             {
-                var regEj = new RegistroEjercicio
-                {
-                    NombreEjercicio = ej.NombreEjercicio,
-                    Series = new List<RegistroSerie>()
-                };
+                EjercicioCatalogoId = ejercicio.EjercicioCatalogoId,
+                NombreEjercicio = ejercicio.NombreEjercicio,
+                GrupoMuscularPrincipal = ejercicio.GrupoMuscularPrincipal,
+                Equipo = ejercicio.Equipo,
+                NotasCoach = ejercicio.NotasCoach,
+                Series = new List<RegistroSerie>()
+            };
 
-                for (int i = 1; i <= ej.Series; i++)
-                {
-                    regEj.Series.Add(new RegistroSerie { NumeroSerie = i });
-                }
+            for (var i = 1; i <= Math.Max(1, ejercicio.Series); i++)
+            {
+                registroEjercicio.Series.Add(new RegistroSerie { NumeroSerie = i });
+            }
 
-                entrenamientoDeHoy.EjerciciosHechos.Add(regEj);
+            entrenamientoDeHoy.EjerciciosHechos.Add(registroEjercicio);
+        }
+    }
+
+    private async Task HidratarRutinaConCatalogoAsync(Rutina rutina)
+    {
+        foreach (var ejercicio in rutina.Dias.SelectMany(d => d.Ejercicios))
+        {
+            var necesitaVisual = string.IsNullOrWhiteSpace(ejercicio.GifUrl);
+            var necesitaTecnica = string.IsNullOrWhiteSpace(ejercicio.InstruccionesTecnicas);
+
+            if (!necesitaVisual && !necesitaTecnica)
+            {
+                continue;
+            }
+
+            EjercicioCatalogo? catalogo = null;
+
+            if (!string.IsNullOrWhiteSpace(ejercicio.EjercicioCatalogoId))
+            {
+                catalogo = await EjercicioCatalogoService.ObtenerPorIdAsync(ejercicio.EjercicioCatalogoId);
+            }
+
+            if (catalogo == null || string.IsNullOrWhiteSpace(catalogo.GifUrl))
+            {
+                catalogo = await EjercicioCatalogoService.ResolverVisualPorNombreAsync(ejercicio.NombreEjercicio);
+            }
+
+            if (catalogo == null)
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.GifUrl))
+            {
+                ejercicio.GifUrl = catalogo.GifUrl;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.InstruccionesTecnicas))
+            {
+                ejercicio.InstruccionesTecnicas = catalogo.Instrucciones;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.ErroresComunes))
+            {
+                ejercicio.ErroresComunes = catalogo.ErroresComunes;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.GrupoMuscularPrincipal))
+            {
+                ejercicio.GrupoMuscularPrincipal = catalogo.GrupoMuscularPrincipal;
+            }
+
+            if (string.IsNullOrWhiteSpace(ejercicio.Equipo))
+            {
+                ejercicio.Equipo = catalogo.Equipo;
             }
         }
     }
 
+    private static string GifEjercicio(EjercicioRutina? ejercicio)
+    {
+        return ejercicio?.GifUrl ?? "";
+    }
+
     private void ToggleSerie(string serieKey)
     {
-        if (seriesCompletadas.ContainsKey(serieKey))
-            seriesCompletadas[serieKey] = !seriesCompletadas[serieKey];
-        else
-            seriesCompletadas[serieKey] = true;
+        seriesCompletadas[serieKey] = !seriesCompletadas.GetValueOrDefault(serieKey);
     }
 
     private async Task FinalizarEntrenamiento()
     {
+        var registroFinal = new RegistroEntrenamiento
+        {
+            ClienteId = entrenamientoDeHoy.ClienteId,
+            RutinaId = entrenamientoDeHoy.RutinaId,
+            NombreDiaEntrenado = entrenamientoDeHoy.NombreDiaEntrenado,
+            FechaEntrenamiento = DateTime.Now,
+            ComentariosAtleta = entrenamientoDeHoy.ComentariosAtleta,
+            EjerciciosHechos = new List<RegistroEjercicio>()
+        };
+
+        foreach (var ejercicio in entrenamientoDeHoy.EjerciciosHechos)
+        {
+            var seriesCompletas = ejercicio.Series
+                .Where(s => seriesCompletadas.GetValueOrDefault(SerieKey(ejercicio, s)))
+                .ToList();
+
+            if (seriesCompletas.Any())
+            {
+                registroFinal.EjerciciosHechos.Add(new RegistroEjercicio
+                {
+                    EjercicioCatalogoId = ejercicio.EjercicioCatalogoId,
+                    NombreEjercicio = ejercicio.NombreEjercicio,
+                    GrupoMuscularPrincipal = ejercicio.GrupoMuscularPrincipal,
+                    Equipo = ejercicio.Equipo,
+                    NotasCoach = ejercicio.NotasCoach,
+                    Series = seriesCompletas
+                });
+            }
+        }
+
+        if (!registroFinal.EjerciciosHechos.Any())
+        {
+            guardadoCorrecto = false;
+            mensajeConfirmacion = "Marca al menos una serie como completada antes de guardar.";
+            return;
+        }
+
         try
         {
-            await RegistroEntrenamientoService.CrearRegistroAsync(entrenamientoDeHoy);
+            await RegistroEntrenamientoService.CrearRegistroAsync(registroFinal);
+            historialEntrenamientos.Insert(0, registroFinal);
+            guardadoCorrecto = true;
             mensajeConfirmacion = "Entrenamiento guardado correctamente.";
-            mostrarConfirmacion = true;
-            await InvokeAsync(StateHasChanged);
-            await Task.Delay(1200);
-            tabActual = "chat";
-            await InvokeAsync(StateHasChanged);
+            PrepararRegistroDeHoy();
         }
         catch
         {
-            mensajeConfirmacion = "Ocurrió un error al guardar el entrenamiento.";
-            mostrarConfirmacion = true;
-            await InvokeAsync(StateHasChanged);
+            guardadoCorrecto = false;
+            mensajeConfirmacion = "Ocurrio un error al guardar el entrenamiento.";
         }
     }
 
@@ -380,38 +653,56 @@
 
     private async Task MarcarMensajesComoLeidos()
     {
-        bool actualizoAlgo = false;
-        foreach (var msg in chatActual.Historial.Where(m => m.RolRemitente == "Entrenador" && !m.Leido))
+        if (string.IsNullOrWhiteSpace(chatActual.Id))
         {
-            msg.Leido = true;
-            actualizoAlgo = true;
+            return;
         }
 
-        if (actualizoAlgo)
+        await ChatService.MarcarMensajesComoLeidosAsync(chatActual.Id, "Cliente");
+        foreach (var msg in chatActual.Historial.Where(m => m.RolRemitente == "Entrenador"))
         {
-            mensajesSinLeer = 0;
-            if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
-                await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
+            msg.Leido = true;
+        }
+        mensajesSinLeer = 0;
+    }
+
+    private async Task ManejarEnterChat(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await EnviarMensaje();
         }
     }
 
     private async Task EnviarMensaje()
     {
-        if (!string.IsNullOrWhiteSpace(nuevoMensajeTexto))
+        if (string.IsNullOrWhiteSpace(nuevoMensajeTexto) || string.IsNullOrWhiteSpace(chatActual.Id))
         {
-            var msg = new Mensaje { Texto = nuevoMensajeTexto, RolRemitente = "Cliente", RemitenteId = idClienteActual };
-            await ChatService.EnviarMensajeAsync(chatActual.Id!, msg);
-            if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
-                await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
-
-            chatActual.Historial.Add(msg);
-            nuevoMensajeTexto = "";
-            await InvokeAsync(StateHasChanged);
+            return;
         }
+
+        var msg = new Mensaje { Texto = nuevoMensajeTexto.Trim(), RolRemitente = "Cliente", RemitenteId = idClienteActual };
+        await ChatService.EnviarMensajeAsync(chatActual.Id, msg);
+
+        if (hubConnection is not null && hubConnection.State == HubConnectionState.Connected)
+        {
+            await hubConnection.SendAsync("NotificarNuevoMensaje", chatActual.Id);
+        }
+
+        chatActual.Historial.Add(msg);
+        nuevoMensajeTexto = "";
+    }
+
+    private static string SerieKey(RegistroEjercicio ejercicio, RegistroSerie serie)
+    {
+        return $"{ejercicio.EjercicioCatalogoId ?? ejercicio.NombreEjercicio}-{serie.NumeroSerie}";
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (hubConnection is not null) await hubConnection.DisposeAsync();
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
     }
 }

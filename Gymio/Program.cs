@@ -44,12 +44,14 @@ builder.Services.AddScoped<IRutinaService, RutinaService>();
 builder.Services.AddScoped<IChatService,ChatService >();
 builder.Services.AddScoped<IRegistroEntrenamientoService, RegistroEntrenamientoService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddScoped<IEjercicioCatalogoService, EjercicioCatalogoService>();
 builder.Services.AddScoped<IPlanillaService, PagoPlanillaService>();
 builder.Services.AddScoped<ITurnoCajaService, TurnoCajaService>();
 builder.Services.AddScoped<IEgresoService, EgresoService>();
 builder.Services.AddRadzenComponents();
 
 builder.Services.AddSignalR();
+builder.Services.AddHttpClient();
 
 
 // =====================================================================

@@ -10,9 +10,9 @@ namespace Gymio.Models
         public string? Id { get; set; }
 
         public int ClienteId { get; set; }
-        public string RutinaId { get; set; } // simplemente tomamos como referencia el Id de la rutina que tiene asignada el cliente, para saber qué rutina estaba siguiendo ese día
+        public string RutinaId { get; set; } = string.Empty; // simplemente tomamos como referencia el Id de la rutina que tiene asignada el cliente, para saber qué rutina estaba siguiendo ese día
 
-        public string NombreDiaEntrenado { get; set; } // Ej: "Día de Pierna"
+        public string NombreDiaEntrenado { get; set; } = string.Empty; // Ej: "Día de Pierna"
         public DateTime FechaEntrenamiento { get; set; } = DateTime.Now;
 
         // La lista de lo que sudó hoy que es 
@@ -23,7 +23,11 @@ namespace Gymio.Models
 
     public class RegistroEjercicio
     {
-        public string NombreEjercicio { get; set; }
+        public string? EjercicioCatalogoId { get; set; }
+        public string NombreEjercicio { get; set; } = string.Empty;
+        public string? GrupoMuscularPrincipal { get; set; }
+        public string? Equipo { get; set; }
+        public string? NotasCoach { get; set; }
         public List<RegistroSerie> Series { get; set; } = new();
     }
 
@@ -33,5 +37,6 @@ namespace Gymio.Models
         public double PesoLibras { get; set; }
         public int RepeticionesLogradas { get; set; }
         public bool LlegoAlFallo { get; set; }
+        public double Rpe { get; set; }
     }
 }

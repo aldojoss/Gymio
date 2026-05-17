@@ -25,5 +25,13 @@ namespace Gymio.Services
                                    .SortByDescending(r => r.FechaEntrenamiento)
                                    .ToListAsync();
         }
+
+        public async Task<List<RegistroEntrenamiento>> ObtenerPorClienteAsync(int clienteId, int cantidad)
+        {
+            return await _registros.Find(r => r.ClienteId == clienteId)
+                                   .SortByDescending(r => r.FechaEntrenamiento)
+                                   .Limit(cantidad)
+                                   .ToListAsync();
+        }
     }
 }

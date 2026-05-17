@@ -9,5 +9,6 @@ namespace Gymio.Interfaces
 
         //enviar un mensajexd
         Task EnviarMensajeAsync(string chatId, Mensaje nuevoMensaje);
+        Task MarcarMensajesComoLeidosAsync(string chatId, string rolLector);
     }
 }

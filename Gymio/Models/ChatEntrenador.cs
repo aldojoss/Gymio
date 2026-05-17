@@ -22,8 +22,8 @@ namespace Gymio.Models
     public class Mensaje
     {
         public int RemitenteId { get; set; }
-        public string RolRemitente { get; set; } // "Entrenador" o "Cliente"
-        public string Texto { get; set; }
+        public string RolRemitente { get; set; } = string.Empty; // "Entrenador" o "Cliente"
+        public string Texto { get; set; } = string.Empty;
         public DateTime FechaEnvio { get; set; } = DateTime.Now;
         public bool Leido { get; set; } = false;
     }
